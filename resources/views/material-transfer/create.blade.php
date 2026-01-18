@@ -40,7 +40,7 @@
             <input type="hidden" name="transfer_route" value="{{ $route }}">
             
             <div class="bg-white rounded-lg shadow p-4 mb-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Reference No. (Optional)</label>
                         <input type="text" name="ref_no" class="w-full border rounded px-3 py-2" placeholder="Enter reference number">
@@ -52,6 +52,10 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Company Name (Optional)</label>
                         <input type="text" name="company_name" class="w-full border rounded px-3 py-2" placeholder="Enter company name">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Transfer Voucher No. (Optional)</label>
+                        <input type="text" name="transfer_voucher_number" class="w-full border rounded px-3 py-2" placeholder="Enter voucher number">
                     </div>
                 </div>
             </div>
@@ -86,7 +90,7 @@
                                         <option value="Ltr">Ltr</option>
                                     </select>
                                 </td>
-                                <td class="px-4 py-3"><input type="number" step="0.01" name="items[0][allocatable_qty]" class="w-full border rounded px-2 py-1" required></td>
+                                <td class="px-4 py-3"><input type="number" step="0.01" name="items[0][allocatable_qty]" class="w-full border rounded px-2 py-1"></td>
                                 <td class="px-4 py-3"><input type="number" step="0.01" name="items[0][actual_qty_received]" class="w-full border rounded px-2 py-1"></td>
                                 <td class="px-4 py-3"><input type="checkbox" name="items[0][st]" value="1" class="rounded"></td>
                                 <td class="px-4 py-3"><input type="checkbox" name="items[0][rt]" value="1" class="rounded"></td>
@@ -100,8 +104,10 @@
             </div>
             
             <div class="mt-4 flex gap-4">
-                <button type="button" onclick="addRow()" class="bg-blue-500 text-white px-4 py-2 rounded">Add Row</button>
-                <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Save Request</button>
+                @if(auth()->user()->role === 'admin')
+                    <button type="button" onclick="addRow()" class="bg-blue-500 text-white px-4 py-2 rounded">Add Row</button>
+                    <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Request</button>
+                @endif
             </div>
         </form>
     </div>
@@ -129,7 +135,7 @@
                         <option value="Ltr">Ltr</option>
                     </select>
                 </td>
-                <td class="px-4 py-3"><input type="number" step="0.01" name="items[${rowIndex}][allocatable_qty]" class="w-full border rounded px-2 py-1" required></td>
+                <td class="px-4 py-3"><input type="number" step="0.01" name="items[${rowIndex}][allocatable_qty]" class="w-full border rounded px-2 py-1"></td>
                 <td class="px-4 py-3"><input type="number" step="0.01" name="items[${rowIndex}][actual_qty_received]" class="w-full border rounded px-2 py-1"></td>
                 <td class="px-4 py-3"><input type="checkbox" name="items[${rowIndex}][st]" value="1" class="rounded"></td>
                 <td class="px-4 py-3"><input type="checkbox" name="items[${rowIndex}][rt]" value="1" class="rounded"></td>

@@ -39,16 +39,21 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
+            'role' => 'required|in:admin,store,delivery',
             'password' => 'required|min:6|confirmed'
         ]);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'role' => $validated['role'],
             'password' => Hash::make($validated['password'])
         ]);
 
         Auth::login($user);
+        if ($user->role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
         return redirect('/');
     }
 

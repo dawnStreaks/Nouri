@@ -9,7 +9,30 @@ class MaterialTransferController extends Controller
 {
     public function index()
     {
-        return view('material-transfer.routes');
+        $routes = [
+            'mab-to-ahmadi' => 'MAB to Ahmadi',
+            'ahmadi-to-mab' => 'Ahmadi to MAB',
+            'mab-to-etd-ardhiya' => 'MAB to ETD Ardhiya',
+            'etd-ardhiya-to-mab' => 'ETD Ardhiya to MAB',
+            'ahmadi-to-etd-ardhiya' => 'Ahmadi to ETD Ardhiya',
+            'etd-ardhiya-to-ahmadi' => 'ETD Ardhiya to Ahmadi'
+        ];
+
+        $routeStats = [];
+        foreach ($routes as $routeKey => $routeName) {
+            $total = MaterialTransferRequest::where('transfer_route', $routeKey)->count();
+            $pending = MaterialTransferRequest::where('transfer_route', $routeKey)->where('is_approved', false)->count();
+            $approved = MaterialTransferRequest::where('transfer_route', $routeKey)->where('is_approved', true)->count();
+            
+            $routeStats[$routeKey] = [
+                'name' => $routeName,
+                'total' => $total,
+                'pending' => $pending,
+                'approved' => $approved
+            ];
+        }
+
+        return view('material-transfer.routes', compact('routeStats'));
     }
 
     public function create($route)
@@ -20,7 +43,10 @@ class MaterialTransferController extends Controller
 
     public function show($route)
     {
-        $requests = MaterialTransferRequest::where('transfer_route', $route)->orderBy('sl_no')->get();
+        $requests = MaterialTransferRequest::where('transfer_route', $route)
+            ->orderBy('created_at', 'desc')
+            ->orderBy('sl_no', 'desc')
+            ->get();
         return view('material-transfer.show', compact('requests', 'route'));
     }
 
@@ -31,11 +57,12 @@ class MaterialTransferController extends Controller
             'ref_no' => 'nullable|string',
             'transfer_date' => 'nullable|date',
             'company_name' => 'nullable|string',
+            'transfer_voucher_number' => 'nullable|string',
             'items.*.sl_no' => 'required|integer',
             'items.*.part_no' => 'required|string',
             'items.*.showroom_requirement' => 'required|numeric|min:0',
             'items.*.unit' => 'required|string',
-            'items.*.allocatable_qty' => 'required|numeric|min:0',
+            'items.*.allocatable_qty' => 'nullable|numeric|min:0',
             'items.*.actual_qty_received' => 'nullable|numeric|min:0',
             'items.*.st' => 'boolean',
             'items.*.rt' => 'boolean'
@@ -57,7 +84,11 @@ class MaterialTransferController extends Controller
             $item['ref_no'] = $validated['ref_no'];
             $item['transfer_date'] = $validated['transfer_date'];
             $item['company_name'] = $validated['company_name'];
-            MaterialTransferRequest::create($item);
+            $item['transfer_voucher_number'] = $validated['transfer_voucher_number'];
+            $transfer = MaterialTransferRequest::create($item);
+            
+            // Fire event for email notification
+            event(new \App\Events\MaterialTransferRequested($transfer));
         }
 
         return redirect()->route('material-transfer.show', $validated['transfer_route'])->with('success', 'Material transfer request saved successfully!');
@@ -79,20 +110,29 @@ class MaterialTransferController extends Controller
     {
         $item = MaterialTransferRequest::findOrFail($id);
         
-        $validated = $request->validate([
-            'ref_no' => 'nullable|string',
-            'transfer_date' => 'nullable|date',
-            'company_name' => 'nullable|string',
-            'part_no' => 'required|string',
-            'showroom_requirement' => 'required|numeric|min:0',
-            'unit' => 'required|string',
-            'allocatable_qty' => 'required|numeric|min:0',
-            'actual_qty_received' => 'nullable|numeric|min:0',
-            'st' => 'boolean',
-            'rt' => 'boolean'
-        ]);
-
-        $item->update($validated);
+        // For store users, only allow updating actual_qty_received
+        if (auth()->user()->role === 'store') {
+            $validated = $request->validate([
+                'actual_qty_received' => 'nullable|numeric|min:0'
+            ]);
+            $item->update($validated);
+        } else {
+            // Admin can update all fields, but make them optional for partial updates
+            $validated = $request->validate([
+                'ref_no' => 'nullable|string',
+                'transfer_date' => 'nullable|date',
+                'company_name' => 'nullable|string',
+                'transfer_voucher_number' => 'nullable|string',
+                'part_no' => 'sometimes|required|string',
+                'showroom_requirement' => 'sometimes|required|numeric|min:0',
+                'unit' => 'sometimes|required|string',
+                'allocatable_qty' => 'sometimes|required|numeric|min:0',
+                'actual_qty_received' => 'nullable|numeric|min:0',
+                'st' => 'sometimes|boolean',
+                'rt' => 'sometimes|boolean'
+            ]);
+            $item->update($validated);
+        }
 
         if (request()->ajax()) {
             return response()->json(['success' => true]);
@@ -110,6 +150,54 @@ class MaterialTransferController extends Controller
             'approved_at' => now()
         ]);
 
+        // Send email notification to all users
+        $users = \App\Models\User::all();
+        foreach ($users as $user) {
+            \Mail::to($user->email)->send(new \App\Mail\TransferApprovedMail($item));
+        }
+
         return back()->with('success', 'Item approved successfully!');
+    }
+
+    public function readyForCollection(Request $request, $id)
+    {
+        $item = MaterialTransferRequest::findOrFail($id);
+        $item->update([
+            'st' => true,
+            'collection_status' => 'ready_for_collection'
+        ]);
+
+        return back()->with('success', 'Item marked as ready for collection!');
+    }
+
+    public function collect(Request $request, $id)
+    {
+        $item = MaterialTransferRequest::findOrFail($id);
+        $item->update([
+            'collection_status' => 'collected',
+            'collected_by' => auth()->user()->name,
+            'collected_at' => now()
+        ]);
+
+        return back()->with('success', 'Item collected successfully!');
+    }
+
+    public function finish(Request $request, $id)
+    {
+        $item = MaterialTransferRequest::findOrFail($id);
+        $item->update(['collection_status' => 'completed']);
+
+        return back()->with('success', 'Transfer completed successfully!');
+    }
+
+    public function received(Request $request, $id)
+    {
+        $item = MaterialTransferRequest::findOrFail($id);
+        $item->update([
+            'collection_status' => 'received',
+            'rt' => true
+        ]);
+
+        return back()->with('success', 'Item marked as received successfully!');
     }
 }
