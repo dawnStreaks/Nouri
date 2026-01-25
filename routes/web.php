@@ -25,6 +25,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/records/{route}', [MaterialTransferController::class, 'show'])->name('material-transfer.show');
     Route::get('/edit/{id}', [MaterialTransferController::class, 'edit'])->name('material-transfer.edit');
     Route::put('/update/{id}', [MaterialTransferController::class, 'update'])->name('material-transfer.update');
+    Route::post('/update/{id}', [MaterialTransferController::class, 'update']);
     Route::get('/next-sl/{route}', [MaterialTransferController::class, 'getNextSlNo'])->name('material-transfer.next-sl');
     Route::get('/material-transfer/store', function() {
         return redirect()->route('material-transfer.index');
