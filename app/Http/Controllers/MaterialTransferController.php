@@ -228,7 +228,7 @@ class MaterialTransferController extends Controller
     {
         $item = MaterialTransferRequest::findOrFail($id);
         $item->update([
-            'collection_status' => 'received',
+            'collection_status' => 'completed',
             'rt' => true
         ]);
 
