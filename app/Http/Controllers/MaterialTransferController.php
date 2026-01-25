@@ -142,23 +142,30 @@ class MaterialTransferController extends Controller
     {
         $item = MaterialTransferRequest::findOrFail($id);
         
-        $validated = $request->validate([
-            'ref_no' => 'nullable|string',
-            'transfer_date' => 'nullable|date',
-            'company_name' => 'nullable|string',
-            'part_no' => 'required|string',
-            'showroom_requirement' => 'required|numeric|min:0',
-            'unit' => 'required|string',
-            'allocatable_qty' => 'nullable|numeric|min:0',
-            'actual_qty_received' => 'nullable|numeric|min:0',
-            'st' => 'nullable',
-            'rt' => 'nullable'
-        ]);
+        if (auth()->user()->role === 'store') {
+            $validated = $request->validate([
+                'actual_qty_received' => 'nullable|numeric|min:0'
+            ]);
+            $item->update($validated);
+        } else {
+            $validated = $request->validate([
+                'ref_no' => 'nullable|string',
+                'transfer_date' => 'nullable|date',
+                'company_name' => 'nullable|string',
+                'part_no' => 'required|string',
+                'showroom_requirement' => 'required|numeric|min:0',
+                'unit' => 'required|string',
+                'allocatable_qty' => 'nullable|numeric|min:0',
+                'actual_qty_received' => 'nullable|numeric|min:0',
+                'st' => 'nullable',
+                'rt' => 'nullable'
+            ]);
 
-        $validated['st'] = $request->has('st') ? ($request->input('st') == '1') : false;
-        $validated['rt'] = $request->has('rt') ? ($request->input('rt') == '1') : false;
+            $validated['st'] = $request->has('st') ? ($request->input('st') == '1') : false;
+            $validated['rt'] = $request->has('rt') ? ($request->input('rt') == '1') : false;
 
-        $item->update($validated);
+            $item->update($validated);
+        }
 
         if (request()->ajax()) {
             return response()->json(['success' => true]);
