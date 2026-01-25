@@ -142,29 +142,23 @@ class MaterialTransferController extends Controller
     {
         $item = MaterialTransferRequest::findOrFail($id);
         
-        // For store users, only allow updating actual_qty_received
-        if (auth()->user()->role === 'store') {
-            $validated = $request->validate([
-                'actual_qty_received' => 'nullable|numeric|min:0'
-            ]);
-            $item->update($validated);
-        } else {
-            // Admin can update all fields, but make them optional for partial updates
-            $validated = $request->validate([
-                'ref_no' => 'nullable|string',
-                'transfer_date' => 'nullable|date',
-                'company_name' => 'nullable|string',
-                'transfer_voucher_number' => 'nullable|string',
-                'part_no' => 'sometimes|required|string',
-                'showroom_requirement' => 'sometimes|required|numeric|min:0',
-                'unit' => 'sometimes|required|string',
-                'allocatable_qty' => 'sometimes|required|numeric|min:0',
-                'actual_qty_received' => 'nullable|numeric|min:0',
-                'st' => 'sometimes|boolean',
-                'rt' => 'sometimes|boolean'
-            ]);
-            $item->update($validated);
-        }
+        $validated = $request->validate([
+            'ref_no' => 'nullable|string',
+            'transfer_date' => 'nullable|date',
+            'company_name' => 'nullable|string',
+            'part_no' => 'required|string',
+            'showroom_requirement' => 'required|numeric|min:0',
+            'unit' => 'required|string',
+            'allocatable_qty' => 'nullable|numeric|min:0',
+            'actual_qty_received' => 'nullable|numeric|min:0',
+            'st' => 'nullable',
+            'rt' => 'nullable'
+        ]);
+
+        $validated['st'] = $request->has('st') ? ($request->input('st') == '1') : false;
+        $validated['rt'] = $request->has('rt') ? ($request->input('rt') == '1') : false;
+
+        $item->update($validated);
 
         if (request()->ajax()) {
             return response()->json(['success' => true]);
