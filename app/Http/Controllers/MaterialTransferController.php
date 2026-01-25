@@ -47,7 +47,39 @@ class MaterialTransferController extends Controller
             ->orderBy('created_at', 'desc')
             ->orderBy('sl_no', 'desc')
             ->get();
-        return view('material-transfer.show', compact('requests', 'route'));
+        $groupedRequests = $requests->groupBy(function ($request) {
+            if (!empty($request->transfer_voucher_number)) {
+                return 'voucher:' . $request->transfer_voucher_number;
+            }
+            if (!empty($request->ref_no)) {
+                return 'ref:' . $request->ref_no;
+            }
+
+            $date = $request->transfer_date ? $request->transfer_date->format('Y-m-d') : 'no-date';
+            $company = $request->company_name ?: 'no-company';
+            $created = $request->created_at ? $request->created_at->format('Y-m-d') : 'no-created';
+
+            return 'meta:' . $date . '|' . $company . '|' . $created;
+        });
+
+        $totalRequests = $groupedRequests->count();
+        $approvedRequests = $groupedRequests->filter(function ($group) {
+            return $group->every(function ($item) {
+                return $item->is_approved;
+            });
+        })->count();
+        $pendingRequests = $totalRequests - $approvedRequests;
+        $totalQty = $requests->sum('allocatable_qty');
+
+        return view('material-transfer.show', compact(
+            'requests',
+            'route',
+            'groupedRequests',
+            'totalRequests',
+            'approvedRequests',
+            'pendingRequests',
+            'totalQty'
+        ));
     }
 
     public function store(Request $request)
@@ -174,12 +206,13 @@ class MaterialTransferController extends Controller
     {
         $item = MaterialTransferRequest::findOrFail($id);
         $item->update([
+            'st' => true,
             'collection_status' => 'collected',
             'collected_by' => auth()->user()->name,
             'collected_at' => now()
         ]);
 
-        return back()->with('success', 'Item collected successfully!');
+        return back()->with('success', 'Item marked as ready for collection!');
     }
 
     public function finish(Request $request, $id)

@@ -5,20 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Material Transfer Records</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate {
-            margin: 1rem 0;
-        }
-        .dataTables_wrapper .dataTables_filter input {
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
-            padding: 0.5rem;
-        }
-    </style>
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen">
@@ -80,8 +67,8 @@
                             <i class="fas fa-list text-blue-600"></i>
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm text-gray-600">Total Records</p>
-                            <p class="text-xl font-semibold">{{ $requests->count() }}</p>
+                            <p class="text-sm text-gray-600">Total Requests</p>
+                            <p class="text-xl font-semibold">{{ $totalRequests }}</p>
                         </div>
                     </div>
                 </div>
@@ -91,8 +78,8 @@
                             <i class="fas fa-check text-green-600"></i>
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm text-gray-600">Approved</p>
-                            <p class="text-xl font-semibold">{{ $requests->where('is_approved', true)->count() }}</p>
+                            <p class="text-sm text-gray-600">Approved Requests</p>
+                            <p class="text-xl font-semibold">{{ $approvedRequests }}</p>
                         </div>
                     </div>
                 </div>
@@ -102,8 +89,8 @@
                             <i class="fas fa-clock text-yellow-600"></i>
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm text-gray-600">Pending</p>
-                            <p class="text-xl font-semibold">{{ $requests->where('is_approved', false)->count() }}</p>
+                            <p class="text-sm text-gray-600">Pending Requests</p>
+                            <p class="text-xl font-semibold">{{ $pendingRequests }}</p>
                         </div>
                     </div>
                 </div>
@@ -114,169 +101,186 @@
                         </div>
                         <div class="ml-3">
                             <p class="text-sm text-gray-600">Total Qty</p>
-                            <p class="text-xl font-semibold">{{ number_format($requests->sum('allocatable_qty'), 0) }}</p>
+                            <p class="text-xl font-semibold">{{ number_format($totalQty, 0) }}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Data Table -->
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-medium text-gray-900">Transfer Records</h3>
-                </div>
-                
-                <div class="overflow-x-auto">
-                    <table id="transferTable" class="w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Ref No.</th>
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">SL No.</th>
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Date</th>
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">Company</th>
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">Part No.</th>
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Req. Qty</th>
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">Unit</th>
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Alloc. Qty</th>
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Actual Qty</th>
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">ST</th>
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">RT</th>
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">Status</th>
-                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            @foreach($requests as $request)
-                                <tr class="hover:bg-gray-50" data-id="{{ $request->id }}">
-                                    <td class="px-6 py-6 text-sm font-medium text-gray-900" data-field="ref_no">{{ $request->ref_no ?? '-' }}</td>
-                                    <td class="px-6 py-6 text-sm text-gray-900">{{ $request->sl_no }}</td>
-                                    <td class="px-6 py-6 text-sm text-gray-900" data-field="transfer_date">{{ $request->transfer_date ? (is_string($request->transfer_date) ? $request->transfer_date : $request->transfer_date->format('Y-m-d')) : '-' }}</td>
-                                    <td class="px-6 py-6 text-sm text-gray-900" data-field="company_name">{{ $request->company_name ?? '-' }}</td>
-                                    <td class="px-6 py-6 text-sm font-medium text-blue-600" data-field="part_no">{{ $request->part_no }}</td>
-                                    <td class="px-6 py-6 text-sm text-gray-900" data-field="showroom_requirement">{{ number_format($request->showroom_requirement, 2) }}</td>
-                                    <td class="px-6 py-6 text-sm text-gray-900" data-field="unit">
-                                        <span class="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">{{ $request->unit }}</span>
-                                    </td>
-                                    <td class="px-6 py-6 text-sm text-gray-900" data-field="allocatable_qty">{{ number_format($request->allocatable_qty, 2) }}</td>
-                                    <td class="px-6 py-6 text-sm text-gray-900" data-field="actual_qty_received">{{ $request->actual_qty_received ? number_format($request->actual_qty_received, 2) : '-' }}</td>
-                                    <td class="px-6 py-6 text-sm" data-field="st">
-                                        @if($request->st)
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                                                <i class="fas fa-check mr-1"></i>Yes
-                                            </span>
-                                        @else
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-red-100 text-red-800">
-                                                <i class="fas fa-times mr-1"></i>No
-                                            </span>
-                                        @endif
-                                    </td>
-                                    <td class="px-6 py-6 text-sm" data-field="rt">
-                                        @if($request->rt)
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                                                <i class="fas fa-check mr-1"></i>Yes
-                                            </span>
-                                        @else
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-red-100 text-red-800">
-                                                <i class="fas fa-times mr-1"></i>No
-                                            </span>
-                                        @endif
-                                    </td>
-                                    <td class="px-6 py-6">
-                                        @if($request->is_approved)
-                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                                                <i class="fas fa-check-circle mr-1"></i>Approved
-                                            </span>
-                                        @else
-                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
-                                                <i class="fas fa-clock mr-1"></i>Pending
-                                            </span>
-                                        @endif
-                                    </td>
-                                    <td class="px-6 py-6">
-                                        <div class="flex items-center space-x-2 flex-wrap gap-2">
-                                            @if(auth()->user()->role === 'delivery' && $request->is_approved && !$request->st)
-                                                <form method="POST" action="{{ route('material-transfer.ready-for-collection', $request->id) }}" class="inline">
-                                                    @csrf
-                                                    <button type="submit" class="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition">
-                                                        <i class="fas fa-box mr-1"></i>Ready for Collection
-                                                    </button>
-                                                </form>
-                                            @elseif(auth()->user()->role === 'delivery')
-                                                @if($request->collection_status === 'collected')
-                                                    <form method="POST" action="{{ route('material-transfer.received', $request->id) }}" class="inline">
-                                                        @csrf
-                                                        <button type="submit" class="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition">
-                                                            <i class="fas fa-check-circle mr-1"></i>Received
-                                                        </button>
-                                                    </form>
+            <div class="space-y-4">
+                @foreach($groupedRequests as $group)
+                    @php
+                        $header = $group->first();
+                        $groupApproved = $group->every(function ($item) { return $item->is_approved; });
+                    @endphp
+                    <details class="bg-white rounded-lg shadow overflow-hidden" @if($loop->first) open @endif>
+                        <summary class="px-6 py-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4 cursor-pointer">
+                            <div class="flex flex-wrap items-center gap-6">
+                                <div>
+                                    <p class="text-xs text-gray-500 uppercase tracking-wide">Ref No.</p>
+                                    <p class="text-sm font-semibold text-gray-900">{{ $header->ref_no ?? '-' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 uppercase tracking-wide">Voucher No.</p>
+                                    <p class="text-sm font-semibold text-gray-900">{{ $header->transfer_voucher_number ?? '-' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 uppercase tracking-wide">Date</p>
+                                    <p class="text-sm font-semibold text-gray-900">
+                                        {{ $header->transfer_date ? (is_string($header->transfer_date) ? $header->transfer_date : $header->transfer_date->format('Y-m-d')) : '-' }}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 uppercase tracking-wide">Company</p>
+                                    <p class="text-sm font-semibold text-gray-900">{{ $header->company_name ?? '-' }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                                    <i class="fas fa-layer-group mr-1"></i>{{ $group->count() }} Items
+                                </span>
+                                @if($groupApproved)
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                        <i class="fas fa-check-circle mr-1"></i>Approved
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
+                                        <i class="fas fa-clock mr-1"></i>Pending
+                                    </span>
+                                @endif
+                            </div>
+                        </summary>
+                        <div class="overflow-x-auto">
+                            <table class="w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Ref No.</th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">SL No.</th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Date</th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">Company</th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">Part No.</th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Req. Qty</th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">Unit</th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Alloc. Qty</th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Actual Qty</th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">ST</th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">RT</th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">Status</th>
+                                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($group as $request)
+                                        <tr class="hover:bg-gray-50" data-id="{{ $request->id }}">
+                                            <td class="px-6 py-6 text-sm font-medium text-gray-900" data-field="ref_no">{{ $request->ref_no ?? '-' }}</td>
+                                            <td class="px-6 py-6 text-sm text-gray-900">{{ $request->sl_no }}</td>
+                                            <td class="px-6 py-6 text-sm text-gray-900" data-field="transfer_date">{{ $request->transfer_date ? (is_string($request->transfer_date) ? $request->transfer_date : $request->transfer_date->format('Y-m-d')) : '-' }}</td>
+                                            <td class="px-6 py-6 text-sm text-gray-900" data-field="company_name">{{ $request->company_name ?? '-' }}</td>
+                                            <td class="px-6 py-6 text-sm font-medium text-blue-600" data-field="part_no">{{ $request->part_no }}</td>
+                                            <td class="px-6 py-6 text-sm text-gray-900" data-field="showroom_requirement">{{ number_format($request->showroom_requirement, 2) }}</td>
+                                            <td class="px-6 py-6 text-sm text-gray-900" data-field="unit">
+                                                <span class="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">{{ $request->unit }}</span>
+                                            </td>
+                                            <td class="px-6 py-6 text-sm text-gray-900" data-field="allocatable_qty">{{ number_format($request->allocatable_qty, 2) }}</td>
+                                            <td class="px-6 py-6 text-sm text-gray-900" data-field="actual_qty_received">{{ $request->actual_qty_received ? number_format($request->actual_qty_received, 2) : '-' }}</td>
+                                            <td class="px-6 py-6 text-sm" data-field="st">
+                                                @if($request->st)
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                                        <i class="fas fa-check mr-1"></i>Yes
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-red-100 text-red-800">
+                                                        <i class="fas fa-times mr-1"></i>No
+                                                    </span>
                                                 @endif
-                                            @else
-                                                <button onclick="editRow({{ $request->id }})" class="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition edit-btn">
-                                                    <i class="fas fa-edit mr-1"></i>Edit
-                                                </button>
-                                                <button onclick="saveRow({{ $request->id }})" class="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition save-btn" style="display:none">
-                                                    <i class="fas fa-save mr-1"></i>Save
-                                                </button>
-                                                <button onclick="cancelEdit({{ $request->id }})" class="inline-flex items-center px-3 py-2 bg-gray-600 text-white rounded-md text-sm hover:bg-gray-700 transition cancel-btn" style="display:none">
-                                                    <i class="fas fa-times mr-1"></i>Cancel
-                                                </button>
-                                            @endif
-                                            <button onclick="printMemo({{ $request->id }})" class="inline-flex items-center px-3 py-2 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 transition">
-                                                <i class="fas fa-print mr-1"></i>Print
-                                            </button>
-                                            @if(!$request->is_approved && auth()->user()->role === 'admin' && $request->allocatable_qty)
-                                                <form method="POST" action="{{ route('material-transfer.approve', $request->id) }}" class="inline">
-                                                    @csrf
-                                                    <input type="hidden" name="approved_by" value="{{ auth()->user()->name }}">
-                                                    <button type="submit" class="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition">
-                                                        <i class="fas fa-check mr-1"></i>Approve
+                                            </td>
+                                            <td class="px-6 py-6 text-sm" data-field="rt">
+                                                @if($request->rt)
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                                        <i class="fas fa-check mr-1"></i>Yes
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-red-100 text-red-800">
+                                                        <i class="fas fa-times mr-1"></i>No
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-6">
+                                                @if($request->is_approved)
+                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                                        <i class="fas fa-check-circle mr-1"></i>Approved
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
+                                                        <i class="fas fa-clock mr-1"></i>Pending
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-6">
+                                                <div class="flex items-center space-x-2 flex-wrap gap-2">
+                                                    @if(auth()->user()->role === 'delivery' && $request->is_approved && !$request->st)
+                                                        <form method="POST" action="{{ route('material-transfer.ready-for-collection', $request->id) }}" class="inline">
+                                                            @csrf
+                                                            <button type="submit" class="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition">
+                                                                <i class="fas fa-box mr-1"></i>Ready for Collection
+                                                            </button>
+                                                        </form>
+                                                    @elseif(auth()->user()->role === 'delivery')
+                                                        @if($request->collection_status === 'collected')
+                                                            <form method="POST" action="{{ route('material-transfer.received', $request->id) }}" class="inline">
+                                                                @csrf
+                                                                <button type="submit" class="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition">
+                                                                    <i class="fas fa-check-circle mr-1"></i>Received
+                                                                </button>
+                                                            </form>
+                                                        @endif
+                                                    @else
+                                                        <button onclick="editRow({{ $request->id }})" class="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition edit-btn">
+                                                            <i class="fas fa-edit mr-1"></i>Edit
+                                                        </button>
+                                                        <button onclick="saveRow({{ $request->id }})" class="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition save-btn" style="display:none">
+                                                            <i class="fas fa-save mr-1"></i>Save
+                                                        </button>
+                                                        <button onclick="cancelEdit({{ $request->id }})" class="inline-flex items-center px-3 py-2 bg-gray-600 text-white rounded-md text-sm hover:bg-gray-700 transition cancel-btn" style="display:none">
+                                                            <i class="fas fa-times mr-1"></i>Cancel
+                                                        </button>
+                                                    @endif
+                                                    <button onclick="printMemo({{ $request->id }})" class="inline-flex items-center px-3 py-2 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 transition">
+                                                        <i class="fas fa-print mr-1"></i>Print
                                                     </button>
-                                                </form>
-                                            @endif
-                                            @if(auth()->user()->role === 'store' && $request->actual_qty_received && $request->collection_status !== 'collected')
-                                                <form method="POST" action="{{ route('material-transfer.collect', $request->id) }}" class="inline">
-                                                    @csrf
-                                                    <input type="hidden" name="collected_by" value="{{ auth()->user()->name }}">
-                                                    <button type="submit" class="inline-flex items-center px-3 py-2 bg-orange-600 text-white rounded-md text-sm hover:bg-orange-700 transition">
-                                                        <i class="fas fa-hand-holding mr-1"></i>Ready for Collection
-                                                    </button>
-                                                </form>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                                                    @if(!$request->is_approved && auth()->user()->role === 'admin' && $request->allocatable_qty)
+                                                        <form method="POST" action="{{ route('material-transfer.approve', $request->id) }}" class="inline">
+                                                            @csrf
+                                                            <input type="hidden" name="approved_by" value="{{ auth()->user()->name }}">
+                                                            <button type="submit" class="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition">
+                                                                <i class="fas fa-check mr-1"></i>Approve
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                    @if(auth()->user()->role === 'store' && $request->actual_qty_received && $request->collection_status !== 'collected')
+                                                        <form method="POST" action="{{ route('material-transfer.collect', $request->id) }}" class="inline">
+                                                            @csrf
+                                                            <input type="hidden" name="collected_by" value="{{ auth()->user()->name }}">
+                                                            <button type="submit" class="inline-flex items-center px-3 py-2 bg-orange-600 text-white rounded-md text-sm hover:bg-orange-700 transition">
+                                                                <i class="fas fa-hand-holding mr-1"></i>Ready for Collection
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                @endforeach
             </div>
         </div>
     </div>
 
     <script>
-        $(document).ready(function() {
-            var table = $('#transferTable').DataTable({
-                pageLength: 25,
-                order: [[2, 'desc'], [1, 'desc']],
-                columnDefs: [
-                    { orderable: false, targets: [12] }
-                ],
-                dom: 'Bfrtip',
-                responsive: true,
-                language: {
-                    search: "Search records:",
-                    lengthMenu: "Show _MENU_ records per page",
-                    info: "Showing _START_ to _END_ of _TOTAL_ records",
-                    paginate: {
-                        first: "First",
-                        last: "Last",
-                        next: "Next",
-                        previous: "Previous"
-                    }
-                }
-            });
-        });
-
         function editRow(id) {
             const row = document.querySelector(`tr[data-id="${id}"]`);
             const cells = row.querySelectorAll('td[data-field]');
@@ -286,9 +290,16 @@
                 const field = cell.getAttribute('data-field');
                 const value = cell.textContent.trim();
                 
+                // ST and RT are always read-only (controlled by buttons)
+                if (field === 'st' || field === 'rt') {
+                    cell.classList.add('bg-gray-100');
+                    return;
+                }
+                
                 // For store users, only allow editing actual_qty_received
                 if (userRole === 'store' && field !== 'actual_qty_received') {
-                    return; // Skip editing this field
+                    cell.classList.add('bg-gray-100');
+                    return;
                 }
                 
                 if (field === 'unit') {
@@ -298,9 +309,6 @@
                         <option value="Kg" ${value === 'Kg' ? 'selected' : ''}>Kg</option>
                         <option value="Ltr" ${value === 'Ltr' ? 'selected' : ''}>Ltr</option>
                     </select>`;
-                } else if (field === 'st' || field === 'rt') {
-                    const checked = value.includes('Yes') ? 'checked' : '';
-                    cell.innerHTML = `<input type="checkbox" ${checked} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">`;
                 } else if (field === 'showroom_requirement' || field === 'allocatable_qty' || field === 'actual_qty_received') {
                     const val = value === '-' ? '' : value.replace(/,/g, '');
                     cell.innerHTML = `<input type="number" step="0.01" value="${val}" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">`;
