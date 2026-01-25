@@ -352,7 +352,7 @@
                 }
             });
             
-            fetch(`/update/${id}`, {
+            fetch(`{{ url('/') }}/update/${id}`, {
                 method: 'POST',
                 body: formData
             })
