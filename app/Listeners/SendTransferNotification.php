@@ -10,16 +10,30 @@ class SendTransferNotification
     public function handle($event)
     {
         $transfer = $event->transfer;
-        $users = User::all();
+        $eventType = class_basename($event);
         
-        $subject = match(class_basename($event)) {
+        // Determine which roles should receive the email
+        $targetRoles = match($eventType) {
+            'MaterialTransferRequested' => ['admin'], // Admin request button -> only other admins
+            'MaterialTransferApproved' => ['admin', 'store'], // Approve button -> admin and store
+            'MaterialTransferCollected' => ['admin', 'delivery'], // Ready for collection -> admin and delivery
+            'MaterialTransferReceived' => ['admin'], // Received button -> only admin
+            'MaterialTransferCompleted' => ['admin'],
+            default => ['admin']
+        };
+        
+        $users = User::whereIn('role', $targetRoles)->get();
+        
+        $subject = match($eventType) {
             'MaterialTransferRequested' => 'Material Transfer Request Created',
-            'MaterialTransferCollected' => 'Material Transfer Items Collected',
+            'MaterialTransferApproved' => 'Material Transfer Request Approved',
+            'MaterialTransferCollected' => 'Material Transfer Ready for Collection',
+            'MaterialTransferReceived' => 'Material Transfer Received',
             'MaterialTransferCompleted' => 'Material Transfer Completed',
             default => 'Material Transfer Update'
         };
 
-        $message = $this->buildMessage($transfer, $event);
+        $message = $this->buildMessage($transfer, $eventType);
 
         foreach ($users as $user) {
             Mail::raw($message, function ($mail) use ($user, $subject) {
@@ -29,11 +43,13 @@ class SendTransferNotification
         }
     }
 
-    private function buildMessage($transfer, $event)
+    private function buildMessage($transfer, $eventType)
     {
-        $status = match(class_basename($event)) {
+        $status = match($eventType) {
             'MaterialTransferRequested' => 'REQUESTED',
-            'MaterialTransferCollected' => 'COLLECTED', 
+            'MaterialTransferApproved' => 'APPROVED',
+            'MaterialTransferCollected' => 'READY FOR COLLECTION',
+            'MaterialTransferReceived' => 'RECEIVED',
             'MaterialTransferCompleted' => 'COMPLETED',
             default => 'UPDATED'
         };

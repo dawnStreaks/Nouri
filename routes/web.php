@@ -32,10 +32,13 @@ Route::middleware('auth')->group(function () {
     });
     Route::post('/material-transfer/store', [MaterialTransferController::class, 'store'])->name('material-transfer.store');
     Route::post('/approve/{id}', [MaterialTransferController::class, 'approve'])->name('material-transfer.approve');
+    Route::post('/approve-group', [MaterialTransferController::class, 'approveGroup'])->name('material-transfer.approve-group');
     Route::post('/ready-for-collection/{id}', [MaterialTransferController::class, 'readyForCollection'])->name('material-transfer.ready-for-collection');
     Route::post('/collect/{id}', [MaterialTransferController::class, 'collect'])->name('material-transfer.collect');
+    Route::post('/collect-group', [MaterialTransferController::class, 'collectGroup'])->name('material-transfer.collect-group');
     Route::post('/finish/{id}', [MaterialTransferController::class, 'finish'])->name('material-transfer.finish');
     Route::post('/received/{id}', [MaterialTransferController::class, 'received'])->name('material-transfer.received');
+    Route::post('/received-group', [MaterialTransferController::class, 'receivedGroup'])->name('material-transfer.received-group');
     
     // Admin dashboard
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');

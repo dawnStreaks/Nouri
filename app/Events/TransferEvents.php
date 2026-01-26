@@ -13,7 +13,21 @@ class MaterialTransferRequested
     public function __construct(public MaterialTransferRequest $transfer) {}
 }
 
+class MaterialTransferApproved
+{
+    use Dispatchable, SerializesModels;
+
+    public function __construct(public MaterialTransferRequest $transfer) {}
+}
+
 class MaterialTransferCollected
+{
+    use Dispatchable, SerializesModels;
+
+    public function __construct(public MaterialTransferRequest $transfer) {}
+}
+
+class MaterialTransferReceived
 {
     use Dispatchable, SerializesModels;
 

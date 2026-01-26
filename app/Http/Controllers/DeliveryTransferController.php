@@ -16,6 +16,7 @@ class DeliveryTransferController extends Controller
             'collection_status' => 'completed'
         ]);
         
+        event(new \App\Events\MaterialTransferReceived($transfer));
         return back()->with('success', 'Items received successfully!');
     }
 }

@@ -60,8 +60,8 @@
             @endif
 
             <!-- Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white rounded-lg shadow p-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+                <button onclick="filterByStatus('all')" class="bg-white rounded-lg shadow p-4 hover:shadow-lg transition cursor-pointer text-left">
                     <div class="flex items-center">
                         <div class="p-2 bg-blue-100 rounded-lg">
                             <i class="fas fa-list text-blue-600"></i>
@@ -71,40 +71,62 @@
                             <p class="text-xl font-semibold">{{ $totalRequests }}</p>
                         </div>
                     </div>
-                </div>
-                <div class="bg-white rounded-lg shadow p-4">
+                </button>
+                <button onclick="filterByStatus('approved')" class="bg-white rounded-lg shadow p-4 hover:shadow-lg transition cursor-pointer text-left">
                     <div class="flex items-center">
                         <div class="p-2 bg-green-100 rounded-lg">
                             <i class="fas fa-check text-green-600"></i>
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm text-gray-600">Approved Requests</p>
+                            <p class="text-sm text-gray-600">Approved</p>
                             <p class="text-xl font-semibold">{{ $approvedRequests }}</p>
                         </div>
                     </div>
-                </div>
-                <div class="bg-white rounded-lg shadow p-4">
+                </button>
+                <button onclick="filterByStatus('pending')" class="bg-white rounded-lg shadow p-4 hover:shadow-lg transition cursor-pointer text-left">
                     <div class="flex items-center">
                         <div class="p-2 bg-yellow-100 rounded-lg">
                             <i class="fas fa-clock text-yellow-600"></i>
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm text-gray-600">Pending Requests</p>
+                            <p class="text-sm text-gray-600">Pending</p>
                             <p class="text-xl font-semibold">{{ $pendingRequests }}</p>
                         </div>
                     </div>
-                </div>
-                <div class="bg-white rounded-lg shadow p-4">
+                </button>
+                <button onclick="filterByStatus('ready_for_collection')" class="bg-white rounded-lg shadow p-4 hover:shadow-lg transition cursor-pointer text-left">
                     <div class="flex items-center">
-                        <div class="p-2 bg-purple-100 rounded-lg">
-                            <i class="fas fa-boxes text-purple-600"></i>
+                        <div class="p-2 bg-indigo-100 rounded-lg">
+                            <i class="fas fa-box text-indigo-600"></i>
                         </div>
                         <div class="ml-3">
-                            <p class="text-sm text-gray-600">Total Qty</p>
-                            <p class="text-xl font-semibold">{{ number_format($totalQty, 0) }}</p>
+                            <p class="text-sm text-gray-600">Ready</p>
+                            <p class="text-xl font-semibold">{{ $readyForCollection }}</p>
                         </div>
                     </div>
-                </div>
+                </button>
+                <button onclick="filterByStatus('collected')" class="bg-white rounded-lg shadow p-4 hover:shadow-lg transition cursor-pointer text-left">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-orange-100 rounded-lg">
+                            <i class="fas fa-hand-holding text-orange-600"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-gray-600">Collected</p>
+                            <p class="text-xl font-semibold">{{ $collected }}</p>
+                        </div>
+                    </div>
+                </button>
+                <button onclick="filterByStatus('completed')" class="bg-white rounded-lg shadow p-4 hover:shadow-lg transition cursor-pointer text-left">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-purple-100 rounded-lg">
+                            <i class="fas fa-check-circle text-purple-600"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-gray-600">Completed</p>
+                            <p class="text-xl font-semibold">{{ $completed }}</p>
+                        </div>
+                    </div>
+                </button>
             </div>
 
             <!-- Data Table -->
@@ -114,7 +136,7 @@
                         $header = $group->first();
                         $groupApproved = $group->every(function ($item) { return $item->is_approved; });
                     @endphp
-                    <details class="bg-white rounded-lg shadow overflow-hidden" @if($loop->first) open @endif>
+                    <details class="bg-white rounded-lg shadow overflow-hidden" @if($loop->first) open @endif data-group-index="{{ $loop->index }}">
                         <summary class="px-6 py-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4 cursor-pointer">
                             <div class="flex flex-wrap items-center gap-6">
                                 <div>
@@ -136,7 +158,43 @@
                                     <p class="text-sm font-semibold text-gray-900">{{ $header->company_name ?? '-' }}</p>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <button onclick="event.stopPropagation(); printGroup({{ $loop->index }})" class="inline-flex items-center px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-xs transition">
+                                    <i class="fas fa-print mr-1"></i>Print
+                                </button>
+                                @if(!$groupApproved && auth()->user()->role === 'admin')
+                                    <form method="POST" action="{{ route('material-transfer.approve-group') }}" class="inline" onclick="event.stopPropagation();">
+                                        @csrf
+                                        @foreach($group as $item)
+                                            <input type="hidden" name="ids[]" value="{{ $item->id }}">
+                                        @endforeach
+                                        <button type="submit" class="inline-flex items-center px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs transition">
+                                            <i class="fas fa-check mr-1"></i>Approve All
+                                        </button>
+                                    </form>
+                                @endif
+                                @if(auth()->user()->role === 'store' && $groupApproved && $group->every(fn($i) => $i->actual_qty_received && $i->collection_status !== 'collected'))
+                                    <form method="POST" action="{{ route('material-transfer.collect-group') }}" class="inline" onclick="event.stopPropagation();">
+                                        @csrf
+                                        @foreach($group as $item)
+                                            <input type="hidden" name="ids[]" value="{{ $item->id }}">
+                                        @endforeach
+                                        <button type="submit" class="inline-flex items-center px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded-md text-xs transition">
+                                            <i class="fas fa-hand-holding mr-1"></i>Ready All
+                                        </button>
+                                    </form>
+                                @endif
+                                @if(auth()->user()->role === 'delivery' && $group->every(fn($i) => $i->collection_status === 'collected'))
+                                    <form method="POST" action="{{ route('material-transfer.received-group') }}" class="inline" onclick="event.stopPropagation();">
+                                        @csrf
+                                        @foreach($group as $item)
+                                            <input type="hidden" name="ids[]" value="{{ $item->id }}">
+                                        @endforeach
+                                        <button type="submit" class="inline-flex items-center px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs transition">
+                                            <i class="fas fa-check-circle mr-1"></i>Receive All
+                                        </button>
+                                    </form>
+                                @endif
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
                                     <i class="fas fa-layer-group mr-1"></i>{{ $group->count() }} Items
                                 </span>
@@ -208,14 +266,15 @@
                                             </td>
                                             <td class="px-6 py-6">
                                                 @if($request->is_approved)
-                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800 approval-status" data-status="approved">
                                                         <i class="fas fa-check-circle mr-1"></i>Approved
                                                     </span>
                                                 @else
-                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
+                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800 approval-status" data-status="pending">
                                                         <i class="fas fa-clock mr-1"></i>Pending
                                                     </span>
                                                 @endif
+                                                <span class="collection-status" data-status="{{ $request->collection_status }}"></span>
                                             </td>
                                             <td class="px-6 py-6">
                                                 <div class="flex items-center space-x-2 flex-wrap gap-2">
@@ -281,6 +340,144 @@
     </div>
 
     <script>
+        function filterByStatus(status) {
+            const allDetails = document.querySelectorAll('details');
+            
+            allDetails.forEach(detail => {
+                const rows = detail.querySelectorAll('tbody tr');
+                let hasVisibleRows = false;
+                
+                rows.forEach(row => {
+                    const approvalStatus = row.querySelector('.approval-status')?.dataset.status;
+                    const collectionStatus = row.querySelector('.collection-status')?.dataset.status;
+                    
+                    let shouldShow = false;
+                    
+                    if (status === 'all') {
+                        shouldShow = true;
+                    } else if (status === 'approved') {
+                        shouldShow = approvalStatus === 'approved';
+                    } else if (status === 'pending') {
+                        shouldShow = approvalStatus === 'pending';
+                    } else if (status === 'ready_for_collection' || status === 'collected' || status === 'completed') {
+                        shouldShow = collectionStatus === status;
+                    }
+                    
+                    row.style.display = shouldShow ? '' : 'none';
+                    if (shouldShow) hasVisibleRows = true;
+                });
+                
+                detail.style.display = hasVisibleRows ? '' : 'none';
+            });
+        }
+
+        function printGroup(groupIndex) {
+            const details = document.querySelector(`details[data-group-index="${groupIndex}"]`);
+            const rows = details.querySelectorAll('tbody tr');
+            const items = [];
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                items.push({
+                    refNo: cells[0].textContent.trim(),
+                    slNo: cells[1].textContent.trim(),
+                    date: cells[2].textContent.trim(),
+                    company: cells[3].textContent.trim(),
+                    partNo: cells[4].textContent.trim(),
+                    showroomReq: cells[5].textContent.trim(),
+                    unit: cells[6].textContent.trim(),
+                    allocatableQty: cells[7].textContent.trim(),
+                    actualQty: cells[8].textContent.trim(),
+                    st: cells[9].textContent.trim(),
+                    rt: cells[10].textContent.trim(),
+                    status: cells[11].textContent.trim()
+                });
+            });
+            
+            const printWindow = window.open('', '_blank');
+            let tableRows = '';
+            items.forEach(item => {
+                tableRows += `
+                    <tr>
+                        <td>${item.slNo}</td>
+                        <td>${item.partNo}</td>
+                        <td>${item.showroomReq}</td>
+                        <td>${item.unit}</td>
+                        <td>${item.allocatableQty}</td>
+                        <td>${item.actualQty}</td>
+                        <td>${item.st}</td>
+                        <td>${item.rt}</td>
+                        <td>${item.status}</td>
+                    </tr>
+                `;
+            });
+            
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Material Transfer Request - Group</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+                        .info { margin-bottom: 20px; }
+                        .info-table { width: 100%; margin-bottom: 20px; }
+                        .info-table td { padding: 5px; }
+                        .items-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        .items-table th, .items-table td { border: 1px solid #333; padding: 8px; text-align: left; font-size: 12px; }
+                        .items-table th { background-color: #f5f5f5; font-weight: bold; }
+                        .footer { margin-top: 40px; text-align: right; font-size: 12px; color: #666; }
+                        @media print { body { margin: 0; } }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>Material Transfer Request</h1>
+                        <h3>{{ ucwords(str_replace('-', ' ', $route)) }} Transfer</h3>
+                    </div>
+                    <div class="info">
+                        <table class="info-table">
+                            <tr>
+                                <td><strong>Reference No:</strong></td>
+                                <td>${items[0].refNo}</td>
+                                <td><strong>Date:</strong></td>
+                                <td>${items[0].date}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Company:</strong></td>
+                                <td colspan="3">${items[0].company}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th>SL No.</th>
+                                <th>Part No.</th>
+                                <th>Req. Qty</th>
+                                <th>Unit</th>
+                                <th>Alloc. Qty</th>
+                                <th>Actual Qty</th>
+                                <th>ST</th>
+                                <th>RT</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                    <div class="footer">
+                        <p>Total Items: ${items.length}</p>
+                        <p>Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+                        <p>Generated by: {{ auth()->user()->name }}</p>
+                    </div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
         function editRow(id) {
             const row = document.querySelector(`tr[data-id="${id}"]`);
             const cells = row.querySelectorAll('td[data-field]');

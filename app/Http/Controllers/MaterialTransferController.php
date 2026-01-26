@@ -70,6 +70,9 @@ class MaterialTransferController extends Controller
         })->count();
         $pendingRequests = $totalRequests - $approvedRequests;
         $totalQty = $requests->sum('allocatable_qty');
+        $readyForCollection = $requests->where('collection_status', 'ready_for_collection')->count();
+        $collected = $requests->where('collection_status', 'collected')->count();
+        $completed = $requests->where('collection_status', 'completed')->count();
 
         return view('material-transfer.show', compact(
             'requests',
@@ -78,7 +81,10 @@ class MaterialTransferController extends Controller
             'totalRequests',
             'approvedRequests',
             'pendingRequests',
-            'totalQty'
+            'totalQty',
+            'readyForCollection',
+            'collected',
+            'completed'
         ));
     }
 
@@ -104,6 +110,7 @@ class MaterialTransferController extends Controller
         $existingSlNos = MaterialTransferRequest::where('transfer_route', $validated['transfer_route'])
             ->pluck('sl_no')->toArray();
         
+        $transfers = [];
         foreach ($validated['items'] as $item) {
             if (in_array($item['sl_no'], $existingSlNos)) {
                 return back()->withErrors(['items' => "S.No {$item['sl_no']} already exists for this transfer route."])->withInput();
@@ -117,10 +124,13 @@ class MaterialTransferController extends Controller
             $item['transfer_date'] = $validated['transfer_date'];
             $item['company_name'] = $validated['company_name'];
             $item['transfer_voucher_number'] = $validated['transfer_voucher_number'];
-            $transfer = MaterialTransferRequest::create($item);
-            
-            // Fire event for email notification
-            event(new \App\Events\MaterialTransferRequested($transfer));
+            $transfers[] = MaterialTransferRequest::create($item);
+        }
+
+        // Send single email to all admins with all items
+        $admins = \App\Models\User::where('role', 'admin')->get();
+        foreach ($admins as $admin) {
+            \Mail::to($admin->email)->send(new \App\Mail\TransferRequestedMail($transfers, auth()->user()->name));
         }
 
         return redirect()->route('material-transfer.show', $validated['transfer_route'])->with('success', 'Material transfer request saved successfully!');
@@ -183,12 +193,7 @@ class MaterialTransferController extends Controller
             'approved_at' => now()
         ]);
 
-        // Send email notification to all users
-        $users = \App\Models\User::all();
-        foreach ($users as $user) {
-            \Mail::to($user->email)->send(new \App\Mail\TransferApprovedMail($item));
-        }
-
+        event(new \App\Events\MaterialTransferApproved($item));
         return back()->with('success', 'Item approved successfully!');
     }
 
@@ -213,6 +218,7 @@ class MaterialTransferController extends Controller
             'collected_at' => now()
         ]);
 
+        event(new \App\Events\MaterialTransferCollected($item));
         return back()->with('success', 'Item marked as ready for collection!');
     }
 
@@ -224,14 +230,59 @@ class MaterialTransferController extends Controller
         return back()->with('success', 'Transfer completed successfully!');
     }
 
-    public function received(Request $request, $id)
+    public function approveGroup(Request $request)
     {
-        $item = MaterialTransferRequest::findOrFail($id);
-        $item->update([
-            'collection_status' => 'completed',
-            'rt' => true
-        ]);
-
-        return back()->with('success', 'Item marked as received successfully!');
+        $ids = $request->input('ids', []);
+        foreach ($ids as $id) {
+            $item = MaterialTransferRequest::find($id);
+            if ($item && !$item->is_approved) {
+                $item->update([
+                    'is_approved' => true,
+                    'approved_by' => auth()->user()->name,
+                    'approved_at' => now()
+                ]);
+            }
+        }
+        if (count($ids) > 0) {
+            event(new \App\Events\MaterialTransferApproved(MaterialTransferRequest::find($ids[0])));
+        }
+        return back()->with('success', 'All items approved successfully!');
     }
-}
+
+    public function collectGroup(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        foreach ($ids as $id) {
+            $item = MaterialTransferRequest::find($id);
+            if ($item && $item->collection_status !== 'collected') {
+                $item->update([
+                    'st' => true,
+                    'collection_status' => 'collected',
+                    'collected_by' => auth()->user()->name,
+                    'collected_at' => now()
+                ]);
+            }
+        }
+        if (count($ids) > 0) {
+            event(new \App\Events\MaterialTransferCollected(MaterialTransferRequest::find($ids[0])));
+        }
+        return back()->with('success', 'All items marked as ready for collection!');
+    }
+
+    public function receivedGroup(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        foreach ($ids as $id) {
+            $item = MaterialTransferRequest::find($id);
+            if ($item) {
+                $item->update([
+                    'collection_status' => 'completed',
+                    'rt' => true
+                ]);
+            }
+        }
+        if (count($ids) > 0) {
+            event(new \App\Events\MaterialTransferReceived(MaterialTransferRequest::find($ids[0])));
+        }
+        return back()->with('success', 'All items marked as received successfully!');
+    }
