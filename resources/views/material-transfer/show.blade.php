@@ -159,6 +159,15 @@
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 flex-wrap">
+                                <button onclick="event.stopPropagation(); editGroup({{ $loop->index }})" class="inline-flex items-center px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs transition group-edit-btn-{{ $loop->index }}">
+                                    <i class="fas fa-edit mr-1"></i>Edit All
+                                </button>
+                                <button onclick="event.stopPropagation(); saveGroup({{ $loop->index }})" class="inline-flex items-center px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs transition group-save-btn-{{ $loop->index }}" style="display:none">
+                                    <i class="fas fa-save mr-1"></i>Save All
+                                </button>
+                                <button onclick="event.stopPropagation(); cancelGroup({{ $loop->index }})" class="inline-flex items-center px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-xs transition group-cancel-btn-{{ $loop->index }}" style="display:none">
+                                    <i class="fas fa-times mr-1"></i>Cancel
+                                </button>
                                 <button onclick="event.stopPropagation(); printGroup({{ $loop->index }})" class="inline-flex items-center px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-xs transition">
                                     <i class="fas fa-print mr-1"></i>Print
                                 </button>
@@ -369,6 +378,58 @@
                 
                 detail.style.display = hasVisibleRows ? '' : 'none';
             });
+        }
+
+        function editGroup(groupIndex) {
+            const details = document.querySelector(`details[data-group-index="${groupIndex}"]`);
+            const rows = details.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const id = row.getAttribute('data-id');
+                editRow(id);
+            });
+            
+            details.querySelector(`.group-edit-btn-${groupIndex}`).style.display = 'none';
+            details.querySelector(`.group-save-btn-${groupIndex}`).style.display = 'inline-flex';
+            details.querySelector(`.group-cancel-btn-${groupIndex}`).style.display = 'inline-flex';
+        }
+
+        function saveGroup(groupIndex) {
+            const details = document.querySelector(`details[data-group-index="${groupIndex}"]`);
+            const rows = details.querySelectorAll('tbody tr');
+            let completed = 0;
+            
+            rows.forEach(row => {
+                const id = row.getAttribute('data-id');
+                const formData = new FormData();
+                
+                formData.append('_token', '{{ csrf_token() }}');
+                formData.append('_method', 'PUT');
+                
+                row.querySelectorAll('td[data-field]').forEach(cell => {
+                    const field = cell.getAttribute('data-field');
+                    const input = cell.querySelector('input, select');
+                    if (input) {
+                        formData.append(field, input.value);
+                    }
+                });
+                
+                fetch(`{{ url('/') }}/update/${id}`, {
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (response.ok) {
+                        completed++;
+                        if (completed === rows.length) {
+                            location.reload();
+                        }
+                    }
+                });
+            });
+        }
+
+        function cancelGroup(groupIndex) {
+            location.reload();
         }
 
         function printGroup(groupIndex) {
