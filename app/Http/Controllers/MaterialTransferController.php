@@ -286,3 +286,22 @@ class MaterialTransferController extends Controller
         }
         return back()->with('success', 'All items marked as received successfully!');
     }
+
+
+    public function received(Request $request, $id)
+    {
+        $item = MaterialTransferRequest::findOrFail($id);
+        $item->update([
+            'collection_status' => 'completed',
+            'rt' => true
+        ]);
+
+        // Send email to admins
+        $admins = \App\Models\User::where('role', 'admin')->get();
+        foreach ($admins as $admin) {
+            \Mail::to($admin->email)->send(new \App\Mail\TransferApprovedMail($item));
+        }
+
+        return back()->with('success', 'Item marked as received successfully!');
+    }
+}
