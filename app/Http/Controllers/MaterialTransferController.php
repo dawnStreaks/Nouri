@@ -24,13 +24,20 @@ class MaterialTransferController extends Controller
             $pending = MaterialTransferRequest::where('transfer_route', $routeKey)->where('is_approved', false)->count();
             $approved = MaterialTransferRequest::where('transfer_route', $routeKey)->where('is_approved', true)->count();
             $collected = MaterialTransferRequest::where('transfer_route', $routeKey)->where('collection_status', 'collected')->count();
+            $awaitingCollection = MaterialTransferRequest::where('transfer_route', $routeKey)
+                ->where('is_approved', true)
+                ->whereNotNull('actual_qty_received')
+                ->where('collection_status', '!=', 'collected')
+                ->where('collection_status', '!=', 'completed')
+                ->count();
             
             $routeStats[$routeKey] = [
                 'name' => $routeName,
                 'total' => $total,
                 'pending' => $pending,
                 'approved' => $approved,
-                'collected' => $collected
+                'collected' => $collected,
+                'awaitingCollection' => $awaitingCollection
             ];
         }
 
@@ -285,8 +292,10 @@ class MaterialTransferController extends Controller
             $item = MaterialTransferRequest::find($id);
             if ($item) {
                 $item->update([
-                    'collection_status' => 'completed',
-                    'rt' => true
+                    'collection_status' => 'collected',
+                    'rt' => true,
+                    'received_by' => auth()->user()->name,
+                    'received_at' => now()
                 ]);
             }
         }
@@ -301,8 +310,10 @@ class MaterialTransferController extends Controller
     {
         $item = MaterialTransferRequest::findOrFail($id);
         $item->update([
-            'collection_status' => 'completed',
-            'rt' => true
+            'collection_status' => 'collected',
+            'rt' => true,
+            'received_by' => auth()->user()->name,
+            'received_at' => now()
         ]);
 
         // Send email to admins

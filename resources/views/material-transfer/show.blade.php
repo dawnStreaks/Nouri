@@ -335,7 +335,7 @@
                                                             </button>
                                                         </form>
                                                     @endif
-                                                    @if(auth()->user()->role === 'admin' && $request->collection_status === 'completed' && !$request->is_completed)
+                                                    @if(auth()->user()->role === 'admin' && $request->collection_status === 'collected' && $request->rt && !$request->is_completed)
                                                 <form method="POST" action="{{ route('material-transfer.finish', $request->id) }}" class="inline">
                                                     @csrf
                                                     <button type="submit" class="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition">

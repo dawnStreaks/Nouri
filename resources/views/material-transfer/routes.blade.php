@@ -32,16 +32,20 @@
                     $color = $colors[$loop->index % count($colors)];
                     $highlight = false;
                     $highlightCount = 0;
+                    $highlightLabel = '';
                     
                     if ($userRole === 'admin' && $stats['pending'] > 0) {
                         $highlight = true;
                         $highlightCount = $stats['pending'];
-                    } elseif ($userRole === 'store' && $stats['approved'] > 0) {
+                        $highlightLabel = 'Pending Approval';
+                    } elseif ($userRole === 'store' && $stats['awaitingCollection'] > 0) {
                         $highlight = true;
-                        $highlightCount = $stats['approved'];
+                        $highlightCount = $stats['awaitingCollection'];
+                        $highlightLabel = 'Ready to Mark';
                     } elseif ($userRole === 'delivery' && $stats['collected'] > 0) {
                         $highlight = true;
                         $highlightCount = $stats['collected'];
+                        $highlightLabel = 'Ready to Receive';
                     }
                 @endphp
                 <div class="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 {{ $highlight ? 'ring-4 ring-yellow-400 animate-pulse' : '' }}">
@@ -49,7 +53,7 @@
                         <h3 class="text-lg font-semibold">{{ $stats['name'] }}</h3>
                         @if($highlight)
                             <span class="absolute top-2 right-2 bg-yellow-400 text-gray-900 px-2 py-1 rounded-full text-xs font-bold">
-                                {{ $highlightCount }} Action Required
+                                {{ $highlightCount }} {{ $highlightLabel }}
                             </span>
                         @endif
                     </div>
@@ -63,7 +67,7 @@
                                 <div class="text-2xl font-bold text-yellow-600">{{ $stats['pending'] }}</div>
                                 <div class="text-xs text-gray-600">Pending</div>
                             </div>
-                            <div class="text-center {{ $userRole === 'store' && $stats['approved'] > 0 ? 'bg-green-100 rounded p-1' : '' }}">
+                            <div class="text-center {{ $userRole === 'store' && $stats['awaitingCollection'] > 0 ? 'bg-green-100 rounded p-1' : '' }}">
                                 <div class="text-2xl font-bold text-green-600">{{ $stats['approved'] }}</div>
                                 <div class="text-xs text-gray-600">Approved</div>
                             </div>
