@@ -35,9 +35,21 @@ Route::middleware('auth')->group(function () {
     Route::post('/approve-group', [MaterialTransferController::class, 'approveGroup'])->name('material-transfer.approve-group');
     Route::post('/ready-for-collection/{id}', [MaterialTransferController::class, 'readyForCollection'])->name('material-transfer.ready-for-collection');
     Route::post('/collect/{id}', [MaterialTransferController::class, 'collect'])->name('material-transfer.collect');
+    Route::get('/collect-group', function() {
+        return redirect()->back();
+    });
+    Route::post('/collect-group', [MaterialTransferController::class, 'collectGroup'])->name('material-transfer.collect-group');
     Route::post('/collect-group', [MaterialTransferController::class, 'collectGroup'])->name('material-transfer.collect-group');
     Route::post('/finish/{id}', [MaterialTransferController::class, 'finish'])->name('material-transfer.finish');
     Route::post('/received/{id}', [MaterialTransferController::class, 'received'])->name('material-transfer.received');
+    Route::get('/approve-group', function() {
+        return redirect()->back();
+    });
+    Route::post('/approve-group', [MaterialTransferController::class, 'approveGroup'])->name('material-transfer.approve-group');
+    Route::get('/received-group', function() {
+        return redirect()->back();
+    });
+    Route::post('/received-group', [MaterialTransferController::class, 'receivedGroup'])->name('material-transfer.received-group');
     Route::post('/received-group', [MaterialTransferController::class, 'receivedGroup'])->name('material-transfer.received-group');
     
     // Admin dashboard
