@@ -204,6 +204,17 @@
                                         </button>
                                     </form>
                                 @endif
+                                @if(auth()->user()->role === 'admin' && $group->every(fn($i) => $i->collection_status === 'collected' && $i->rt))
+                                    <form method="POST" action="{{ route('material-transfer.finish-group') }}" class="inline" onclick="event.stopPropagation();">
+                                        @csrf
+                                        @foreach($group as $item)
+                                            <input type="hidden" name="ids[]" value="{{ $item->id }}">
+                                        @endforeach
+                                        <button type="submit" class="inline-flex items-center px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs transition">
+                                            <i class="fas fa-check-double mr-1"></i>Complete All
+                                        </button>
+                                    </form>
+                                @endif
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
                                     <i class="fas fa-layer-group mr-1"></i>{{ $group->count() }} Items
                                 </span>

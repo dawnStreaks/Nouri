@@ -41,6 +41,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/collect-group', [MaterialTransferController::class, 'collectGroup'])->name('material-transfer.collect-group');
     Route::post('/collect-group', [MaterialTransferController::class, 'collectGroup'])->name('material-transfer.collect-group');
     Route::post('/finish/{id}', [MaterialTransferController::class, 'finish'])->name('material-transfer.finish');
+    Route::post('/finish-group', [MaterialTransferController::class, 'finishGroup'])->name('material-transfer.finish-group');
     Route::post('/received/{id}', [MaterialTransferController::class, 'received'])->name('material-transfer.received');
     Route::get('/approve-group', function() {
         return redirect()->back();

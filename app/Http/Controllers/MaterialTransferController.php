@@ -324,3 +324,15 @@ class MaterialTransferController extends Controller
         return back()->with('success', 'Item marked as received successfully!');
     }
 }
+
+    public function finishGroup(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        foreach ($ids as $id) {
+            $item = MaterialTransferRequest::find($id);
+            if ($item) {
+                $item->update(['collection_status' => 'completed']);
+            }
+        }
+        return back()->with('success', 'All items marked as completed!');
+    }
