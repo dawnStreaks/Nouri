@@ -1,0 +1,65 @@
+digraph Architecture {
+  rankdir=TB;
+  fontsize=11;
+  fontname="Helvetica";
+  node [shape=box, style="rounded", fontname="Helvetica", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+
+  subgraph cluster_clients {
+    label="Clients";
+    color="#888888";
+    style="rounded";
+    users [label="Users\nAdmin / Store / Delivery"];
+    browser [label="Web Browser"];
+    users -> browser;
+  }
+
+  subgraph cluster_app {
+    label="Laravel App";
+    color="#888888";
+    style="rounded";
+
+    routing [label="Routing\nroutes/web.php"];
+    middleware [label="Middleware\nauth, role, admin"];
+
+    controllers [label="Controllers\nMaterialTransfer, AdminTransfer,\nStoreTransfer, DeliveryTransfer,\nAdminDashboard, Admin, Auth/User"];
+
+    views [label="Blade Views\nresources/views/*"];
+
+    models [label="Models\nMaterialTransferRequest\nTransferStatusLog\nUser"];
+
+    events [label="Domain Events\nRequested/Approved/Collected/\nReceived/Completed"];
+    listener [label="Listener\nSendTransferNotification"];
+    mail [label="Mail Delivery\nMail::raw / Mailables"];
+  }
+
+  subgraph cluster_data {
+    label="Data";
+    color="#888888";
+    style="rounded";
+    db [label="Database\nusers, material_transfer_requests,\ntransfer_status_logs"];
+  }
+
+  subgraph cluster_frontend {
+    label="Frontend Assets";
+    color="#888888";
+    style="rounded";
+    assets [label="Vite + Tailwind\nresources/js, resources/css"];
+  }
+
+  browser -> routing;
+  routing -> middleware;
+  middleware -> controllers;
+  controllers -> models;
+  controllers -> views;
+  views -> browser;
+
+  models -> db;
+
+  controllers -> events;
+  events -> listener;
+  listener -> mail;
+  mail -> users;
+
+  views -> assets;
+}

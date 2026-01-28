@@ -27,8 +27,7 @@ class MaterialTransferController extends Controller
             $awaitingCollection = MaterialTransferRequest::where('transfer_route', $routeKey)
                 ->where('is_approved', true)
                 ->whereNotNull('actual_qty_received')
-                ->where('collection_status', '!=', 'collected')
-                ->where('collection_status', '!=', 'completed')
+                ->whereIn('collection_status', ['pending', 'ready_for_collection'])
                 ->count();
             
             $routeStats[$routeKey] = [
