@@ -335,7 +335,15 @@
                                                             </button>
                                                         </form>
                                                     @endif
-                                                </div>
+                                                    @if(auth()->user()->role === 'admin' && $request->collection_status === 'completed' && !$request->is_completed)
+                                                <form method="POST" action="{{ route('material-transfer.finish', $request->id) }}" class="inline">
+                                                    @csrf
+                                                    <button type="submit" class="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition">
+                                                        <i class="fas fa-check-double mr-1"></i>Complete
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </div>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -449,8 +457,8 @@
                     unit: cells[6].textContent.trim(),
                     allocatableQty: cells[7].textContent.trim(),
                     actualQty: cells[8].textContent.trim(),
-                    st: cells[9].textContent.trim(),
-                    rt: cells[10].textContent.trim(),
+                    st: cells[9].textContent.includes('Yes') ? '✓' : '',
+                    rt: cells[10].textContent.includes('Yes') ? '✓' : '',
                     status: cells[11].textContent.trim()
                 });
             });
@@ -645,8 +653,8 @@
                 unit: cells[6].textContent.trim(),
                 allocatableQty: cells[7].textContent.trim(),
                 actualQty: cells[8].textContent.trim(),
-                st: cells[9].textContent.trim(),
-                rt: cells[10].textContent.trim(),
+                st: cells[9].textContent.includes('Yes') ? '✓' : '',
+                rt: cells[10].textContent.includes('Yes') ? '✓' : '',
                 status: cells[11].textContent.trim()
             };
             

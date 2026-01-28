@@ -23,12 +23,14 @@ class MaterialTransferController extends Controller
             $total = MaterialTransferRequest::where('transfer_route', $routeKey)->count();
             $pending = MaterialTransferRequest::where('transfer_route', $routeKey)->where('is_approved', false)->count();
             $approved = MaterialTransferRequest::where('transfer_route', $routeKey)->where('is_approved', true)->count();
+            $collected = MaterialTransferRequest::where('transfer_route', $routeKey)->where('collection_status', 'collected')->count();
             
             $routeStats[$routeKey] = [
                 'name' => $routeName,
                 'total' => $total,
                 'pending' => $pending,
-                'approved' => $approved
+                'approved' => $approved,
+                'collected' => $collected
             ];
         }
 
@@ -205,6 +207,8 @@ class MaterialTransferController extends Controller
             'collection_status' => 'ready_for_collection'
         ]);
 
+        event(new \App\Events\MaterialTransferReadyForCollection($item));
+
         return back()->with('success', 'Item marked as ready for collection!');
     }
 
@@ -225,7 +229,12 @@ class MaterialTransferController extends Controller
     public function finish(Request $request, $id)
     {
         $item = MaterialTransferRequest::findOrFail($id);
-        $item->update(['collection_status' => 'completed']);
+        $item->update([
+            'collection_status' => 'completed',
+            'is_completed' => true,
+            'completed_by' => auth()->user()->name,
+            'completed_at' => now()
+        ]);
 
         return back()->with('success', 'Transfer completed successfully!');
     }

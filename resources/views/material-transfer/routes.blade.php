@@ -25,14 +25,33 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @php
                 $colors = ['blue', 'green', 'purple', 'orange', 'red', 'indigo'];
+                $userRole = auth()->user()->role;
             @endphp
             @foreach($routeStats as $routeKey => $stats)
                 @php
                     $color = $colors[$loop->index % count($colors)];
+                    $highlight = false;
+                    $highlightCount = 0;
+                    
+                    if ($userRole === 'admin' && $stats['pending'] > 0) {
+                        $highlight = true;
+                        $highlightCount = $stats['pending'];
+                    } elseif ($userRole === 'store' && $stats['approved'] > 0) {
+                        $highlight = true;
+                        $highlightCount = $stats['approved'];
+                    } elseif ($userRole === 'delivery' && $stats['collected'] > 0) {
+                        $highlight = true;
+                        $highlightCount = $stats['collected'];
+                    }
                 @endphp
-                <div class="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                    <div class="bg-{{ $color }}-500 text-white p-4">
+                <div class="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 {{ $highlight ? 'ring-4 ring-yellow-400 animate-pulse' : '' }}">
+                    <div class="bg-{{ $color }}-500 text-white p-4 relative">
                         <h3 class="text-lg font-semibold">{{ $stats['name'] }}</h3>
+                        @if($highlight)
+                            <span class="absolute top-2 right-2 bg-yellow-400 text-gray-900 px-2 py-1 rounded-full text-xs font-bold">
+                                {{ $highlightCount }} Action Required
+                            </span>
+                        @endif
                     </div>
                     <div class="p-4">
                         <div class="grid grid-cols-3 gap-4 mb-4">
@@ -40,15 +59,21 @@
                                 <div class="text-2xl font-bold text-gray-800">{{ $stats['total'] }}</div>
                                 <div class="text-xs text-gray-600">Total</div>
                             </div>
-                            <div class="text-center">
+                            <div class="text-center {{ $userRole === 'admin' && $stats['pending'] > 0 ? 'bg-yellow-100 rounded p-1' : '' }}">
                                 <div class="text-2xl font-bold text-yellow-600">{{ $stats['pending'] }}</div>
                                 <div class="text-xs text-gray-600">Pending</div>
                             </div>
-                            <div class="text-center">
+                            <div class="text-center {{ $userRole === 'store' && $stats['approved'] > 0 ? 'bg-green-100 rounded p-1' : '' }}">
                                 <div class="text-2xl font-bold text-green-600">{{ $stats['approved'] }}</div>
                                 <div class="text-xs text-gray-600">Approved</div>
                             </div>
                         </div>
+                        @if($userRole === 'delivery')
+                            <div class="text-center mb-4 {{ $stats['collected'] > 0 ? 'bg-orange-100 rounded p-2' : '' }}">
+                                <div class="text-2xl font-bold text-orange-600">{{ $stats['collected'] }}</div>
+                                <div class="text-xs text-gray-600">Ready for Delivery</div>
+                            </div>
+                        @endif
                         <div class="flex gap-2">
                             <a href="{{ route('material-transfer.show', $routeKey) }}" 
                                class="flex-1 bg-{{ $color }}-500 hover:bg-{{ $color }}-600 text-white text-center py-2 px-4 rounded transition duration-200">
