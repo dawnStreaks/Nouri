@@ -306,6 +306,7 @@ class MaterialTransferController extends Controller
 
 
     public function received(Request $request, $id)
+    public function received(Request $request, $id)
     {
         $item = MaterialTransferRequest::findOrFail($id);
         $item->update([
@@ -323,7 +324,6 @@ class MaterialTransferController extends Controller
 
         return back()->with('success', 'Item marked as received successfully!');
     }
-}
 
     public function finishGroup(Request $request)
     {
@@ -336,3 +336,4 @@ class MaterialTransferController extends Controller
         }
         return back()->with('success', 'All items marked as completed!');
     }
+}
