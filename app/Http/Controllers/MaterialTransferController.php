@@ -306,14 +306,11 @@ class MaterialTransferController extends Controller
 
 
     public function received(Request $request, $id)
-    public function received(Request $request, $id)
     {
         $item = MaterialTransferRequest::findOrFail($id);
         $item->update([
-            'collection_status' => 'collected',
-            'rt' => true,
-            'received_by' => auth()->user()->name,
-            'received_at' => now()
+            'collection_status' => 'completed',
+            'rt' => true
         ]);
 
         // Send email to admins
