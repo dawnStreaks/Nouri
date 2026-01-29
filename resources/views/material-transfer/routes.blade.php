@@ -34,10 +34,10 @@
                     $highlightCount = 0;
                     $highlightLabel = '';
                     
-                    if ($userRole === 'admin' && $stats['pending'] > 0) {
+                    if ($userRole === 'admin' && ($stats['pending'] > 0 || $stats['awaitingCompletion'] > 0)) {
                         $highlight = true;
-                        $highlightCount = $stats['pending'];
-                        $highlightLabel = 'Pending Approval';
+                        $highlightCount = $stats['pending'] + $stats['awaitingCompletion'];
+                        $highlightLabel = 'Action Required';
                     } elseif ($userRole === 'store' && $stats['awaitingCollection'] > 0) {
                         $highlight = true;
                         $highlightCount = $stats['awaitingCollection'];
