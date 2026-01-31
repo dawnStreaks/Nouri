@@ -33,6 +33,10 @@ class MaterialTransferController extends Controller
                 ->where('collection_status', 'collected')
                 ->where('rt', true)
                 ->count();
+            $needsActualQty = MaterialTransferRequest::where('transfer_route', $routeKey)
+                ->where('is_approved', true)
+                ->whereNull('actual_qty_received')
+                ->count();
             
             $routeStats[$routeKey] = [
                 'name' => $routeName,
@@ -41,7 +45,8 @@ class MaterialTransferController extends Controller
                 'approved' => $approved,
                 'collected' => $collected,
                 'awaitingCollection' => $awaitingCollection,
-                'awaitingCompletion' => $awaitingCompletion
+                'awaitingCompletion' => $awaitingCompletion,
+                'needsActualQty' => $needsActualQty
             ];
         }
 
@@ -206,7 +211,15 @@ class MaterialTransferController extends Controller
             'approved_at' => now()
         ]);
 
-        event(new \App\Events\MaterialTransferApproved($item));
+        $storeUsers = \App\Models\User::where('role', 'store')->get();
+        $admins = \App\Models\User::where('role', 'admin')->pluck('email')->toArray();
+        
+        foreach ($storeUsers as $user) {
+            \Mail::to($user->email)
+                ->cc($admins)
+                ->send(new \App\Mail\TransferApprovedMail($item));
+        }
+
         return back()->with('success', 'Item approved successfully!');
     }
 

@@ -38,10 +38,10 @@
                         $highlight = true;
                         $highlightCount = $stats['pending'] + $stats['awaitingCompletion'];
                         $highlightLabel = 'Action Required';
-                    } elseif ($userRole === 'store' && $stats['awaitingCollection'] > 0) {
+                    } elseif ($userRole === 'store' && $stats['needsActualQty'] > 0) {
                         $highlight = true;
-                        $highlightCount = $stats['awaitingCollection'];
-                        $highlightLabel = 'Ready to Mark';
+                        $highlightCount = $stats['needsActualQty'];
+                        $highlightLabel = 'Update Actual Qty';
                     } elseif ($userRole === 'delivery' && $stats['collected'] > 0) {
                         $highlight = true;
                         $highlightCount = $stats['collected'];
