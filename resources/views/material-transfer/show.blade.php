@@ -285,13 +285,25 @@
                                                 @endif
                                             </td>
                                             <td class="px-6 py-6">
-                                                @if($request->is_approved)
-                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800 approval-status" data-status="approved">
-                                                        <i class="fas fa-check-circle mr-1"></i>Approved
-                                                    </span>
-                                                @else
+                                                @if(!$request->is_approved)
                                                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800 approval-status" data-status="pending">
                                                         <i class="fas fa-clock mr-1"></i>Pending
+                                                    </span>
+                                                @elseif($request->collection_status === 'completed')
+                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-purple-100 text-purple-800 approval-status" data-status="completed">
+                                                        <i class="fas fa-check-double mr-1"></i>Completed
+                                                    </span>
+                                                @elseif($request->collection_status === 'collected')
+                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-orange-100 text-orange-800 approval-status" data-status="collected">
+                                                        <i class="fas fa-truck mr-1"></i>Collected
+                                                    </span>
+                                                @elseif($request->collection_status === 'ready_for_collection')
+                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-indigo-100 text-indigo-800 approval-status" data-status="ready_for_collection">
+                                                        <i class="fas fa-box mr-1"></i>Ready for Collection
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800 approval-status" data-status="approved">
+                                                        <i class="fas fa-check-circle mr-1"></i>Approved
                                                     </span>
                                                 @endif
                                                 <span class="collection-status" data-status="{{ $request->collection_status }}"></span>
