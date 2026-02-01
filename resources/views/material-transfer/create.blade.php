@@ -40,11 +40,7 @@
             <input type="hidden" name="transfer_route" value="{{ $route }}">
             
             <div class="bg-white rounded-lg shadow p-4 mb-4">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Reference No. (Optional)</label>
-                        <input type="text" name="ref_no" class="w-full border rounded px-3 py-2" placeholder="Enter reference number">
-                    </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Transfer Date (Optional)</label>
                         <input type="date" name="transfer_date" value="{{ date('Y-m-d') }}" class="w-full border rounded px-3 py-2">

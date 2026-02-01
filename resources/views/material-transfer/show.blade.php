@@ -182,7 +182,7 @@
                                         </button>
                                     </form>
                                 @endif
-                                @if(auth()->user()->role === 'store' && $groupApproved && $group->every(fn($i) => $i->actual_qty_received && $i->collection_status !== 'collected'))
+                                @if(auth()->user()->role === 'store' && $groupApproved && $group->every(fn($i) => $i->actual_qty_received && $i->collection_status !== 'collected' && $i->collection_status !== 'completed' && $i->collection_status !== 'ready_for_collection'))
                                     <form method="POST" action="{{ route('material-transfer.collect-group') }}" class="inline" onclick="event.stopPropagation();">
                                         @csrf
                                         @foreach($group as $item)
@@ -193,7 +193,7 @@
                                         </button>
                                     </form>
                                 @endif
-                                @if(auth()->user()->role === 'delivery' && $group->every(fn($i) => $i->collection_status === 'collected'))
+                                @if(auth()->user()->role === 'delivery' && $group->every(fn($i) => $i->collection_status === 'collected' && !$i->rt))
                                     <form method="POST" action="{{ route('material-transfer.received-group') }}" class="inline" onclick="event.stopPropagation();">
                                         @csrf
                                         @foreach($group as $item)
@@ -205,15 +205,9 @@
                                     </form>
                                 @endif
                                 @if(auth()->user()->role === 'admin' && $group->every(fn($i) => $i->collection_status === 'collected' && $i->rt))
-                                    <form method="POST" action="{{ route('material-transfer.finish-group') }}" class="inline" onclick="event.stopPropagation();">
-                                        @csrf
-                                        @foreach($group as $item)
-                                            <input type="hidden" name="ids[]" value="{{ $item->id }}">
-                                        @endforeach
-                                        <button type="submit" class="inline-flex items-center px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs transition">
-                                            <i class="fas fa-check-double mr-1"></i>Complete All
-                                        </button>
-                                    </form>
+                                    <button onclick="event.stopPropagation(); showVoucherDialog({{ $loop->index }})" class="inline-flex items-center px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs transition">
+                                        <i class="fas fa-check-double mr-1"></i>Complete All
+                                    </button>
                                 @endif
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
                                     <i class="fas fa-layer-group mr-1"></i>{{ $group->count() }} Items
@@ -299,7 +293,7 @@
                                                     </span>
                                                 @elseif($request->collection_status === 'ready_for_collection')
                                                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-indigo-100 text-indigo-800 approval-status" data-status="ready_for_collection">
-                                                        <i class="fas fa-box mr-1"></i>Ready for Collection
+                                                        <i class="fas fa-box mr-1"></i>To Collect
                                                     </span>
                                                 @else
                                                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800 approval-status" data-status="approved">
@@ -318,7 +312,7 @@
                                                             </button>
                                                         </form>
                                                     @elseif(auth()->user()->role === 'delivery')
-                                                        @if($request->collection_status === 'collected')
+                                                        @if($request->collection_status === 'collected' && !$request->rt)
                                                             <form method="POST" action="{{ route('material-transfer.received', $request->id) }}" class="inline">
                                                                 @csrf
                                                                 <button type="submit" class="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition">
@@ -349,7 +343,7 @@
                                                             </button>
                                                         </form>
                                                     @endif
-                                                    @if(auth()->user()->role === 'store' && $request->actual_qty_received && $request->collection_status !== 'collected')
+                                                    @if(auth()->user()->role === 'store' && $request->actual_qty_received && $request->collection_status !== 'collected' && $request->collection_status !== 'completed' && $request->collection_status !== 'ready_for_collection')
                                                         <form method="POST" action="{{ route('material-transfer.collect', $request->id) }}" class="inline">
                                                             @csrf
                                                             <input type="hidden" name="collected_by" value="{{ auth()->user()->name }}">
@@ -358,13 +352,10 @@
                                                             </button>
                                                         </form>
                                                     @endif
-                                                    @if(auth()->user()->role === 'admin' && $request->collection_status === 'collected' && $request->rt && !$request->is_completed)
-                                                <form method="POST" action="{{ route('material-transfer.finish', $request->id) }}" class="inline">
-                                                    @csrf
-                                                    <button type="submit" class="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition">
-                                                        <i class="fas fa-check-double mr-1"></i>Complete
-                                                    </button>
-                                                </form>
+                                            @if(auth()->user()->role === 'admin' && $request->collection_status === 'collected' && $request->rt && !$request->is_completed)
+                                                <button onclick="showSingleVoucherDialog({{ $request->id }})" class="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition">
+                                                    <i class="fas fa-check-double mr-1"></i>Complete
+                                                </button>
                                             @endif
                                         </div>
                                             </td>
@@ -379,7 +370,99 @@
         </div>
     </div>
 
+    <!-- Voucher Number Dialog -->
+    <div id="voucherDialog" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Enter Transfer Voucher Number</h3>
+                <input type="text" id="voucherNumberInput" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Voucher Number">
+                <div class="mt-4 flex justify-end space-x-2">
+                    <button onclick="closeVoucherDialog()" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600">Cancel</button>
+                    <button onclick="submitVoucher()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let currentGroupIndex = null;
+        let currentItemId = null;
+
+        function showVoucherDialog(groupIndex) {
+            currentGroupIndex = groupIndex;
+            currentItemId = null;
+            document.getElementById('voucherDialog').classList.remove('hidden');
+            document.getElementById('voucherNumberInput').value = '';
+            document.getElementById('voucherNumberInput').focus();
+        }
+
+        function showSingleVoucherDialog(itemId) {
+            currentItemId = itemId;
+            currentGroupIndex = null;
+            document.getElementById('voucherDialog').classList.remove('hidden');
+            document.getElementById('voucherNumberInput').value = '';
+            document.getElementById('voucherNumberInput').focus();
+        }
+
+        function closeVoucherDialog() {
+            document.getElementById('voucherDialog').classList.add('hidden');
+            currentGroupIndex = null;
+            currentItemId = null;
+        }
+
+        function submitVoucher() {
+            const voucherNumber = document.getElementById('voucherNumberInput').value.trim();
+            if (!voucherNumber) {
+                alert('Please enter a voucher number');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('_token', '{{ csrf_token() }}');
+            formData.append('voucher_number', voucherNumber);
+
+            if (currentGroupIndex !== null) {
+                const details = document.querySelector(`details[data-group-index="${currentGroupIndex}"]`);
+                const rows = details.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    formData.append('ids[]', row.getAttribute('data-id'));
+                });
+                
+                fetch('{{ route('material-transfer.finish-group') }}', {
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Error completing transfers');
+                    }
+                });
+            } else if (currentItemId !== null) {
+                fetch(`{{ url('/') }}/finish/${currentItemId}`, {
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Error completing transfer');
+                    }
+                });
+            }
+
+            closeVoucherDialog();
+        }
+
+        // Allow Enter key to submit
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('voucherNumberInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    submitVoucher();
+                }
+            });
+        });
+
         function filterByStatus(status) {
             const allDetails = document.querySelectorAll('details');
             

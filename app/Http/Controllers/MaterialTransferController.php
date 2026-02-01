@@ -110,7 +110,6 @@ class MaterialTransferController extends Controller
     {
         $validated = $request->validate([
             'transfer_route' => 'required|string',
-            'ref_no' => 'nullable|string',
             'transfer_date' => 'nullable|date',
             'company_name' => 'nullable|string',
             'transfer_voucher_number' => 'nullable|string',
@@ -123,6 +122,9 @@ class MaterialTransferController extends Controller
             'items.*.st' => 'boolean',
             'items.*.rt' => 'boolean'
         ]);
+
+        // Auto-generate reference number
+        $refNo = $this->generateRefNo($validated['transfer_route']);
 
         // Check for duplicate S.No within the same transfer route
         $existingSlNos = MaterialTransferRequest::where('transfer_route', $validated['transfer_route'])
@@ -138,7 +140,7 @@ class MaterialTransferController extends Controller
         
         foreach ($validated['items'] as $item) {
             $item['transfer_route'] = $validated['transfer_route'];
-            $item['ref_no'] = $validated['ref_no'];
+            $item['ref_no'] = $refNo;
             $item['transfer_date'] = $validated['transfer_date'];
             $item['company_name'] = $validated['company_name'];
             $item['transfer_voucher_number'] = $validated['transfer_voucher_number'];
@@ -152,6 +154,25 @@ class MaterialTransferController extends Controller
         }
 
         return redirect()->route('material-transfer.show', $validated['transfer_route'])->with('success', 'Material transfer request saved successfully!');
+    }
+
+    private function generateRefNo($route)
+    {
+        $prefix = strtoupper(str_replace('-', '', substr($route, 0, 6)));
+        $date = date('Ymd');
+        $lastRef = MaterialTransferRequest::where('transfer_route', $route)
+            ->whereDate('created_at', today())
+            ->orderBy('id', 'desc')
+            ->first();
+        
+        if ($lastRef && $lastRef->ref_no) {
+            preg_match('/(\d+)$/', $lastRef->ref_no, $matches);
+            $sequence = isset($matches[1]) ? intval($matches[1]) + 1 : 1;
+        } else {
+            $sequence = 1;
+        }
+        
+        return $prefix . $date . str_pad($sequence, 3, '0', STR_PAD_LEFT);
     }
 
     public function getNextSlNo($route)
@@ -252,12 +273,17 @@ class MaterialTransferController extends Controller
 
     public function finish(Request $request, $id)
     {
+        $validated = $request->validate([
+            'voucher_number' => 'required|string'
+        ]);
+
         $item = MaterialTransferRequest::findOrFail($id);
         $item->update([
             'collection_status' => 'completed',
             'is_completed' => true,
             'completed_by' => auth()->user()->name,
-            'completed_at' => now()
+            'completed_at' => now(),
+            'transfer_voucher_number' => $validated['voucher_number']
         ]);
 
         return back()->with('success', 'Transfer completed successfully!');
@@ -276,9 +302,7 @@ class MaterialTransferController extends Controller
                 ]);
             }
         }
-        if (count($ids) > 0) {
-            event(new \App\Events\MaterialTransferApproved(MaterialTransferRequest::find($ids[0])));
-        }
+
         return back()->with('success', 'All items approved successfully!');
     }
 
@@ -342,11 +366,19 @@ class MaterialTransferController extends Controller
 
     public function finishGroup(Request $request)
     {
-        $ids = $request->input('ids', []);
+        $validated = $request->validate([
+            'voucher_number' => 'required|string',
+            'ids' => 'required|array'
+        ]);
+
+        $ids = $validated['ids'];
         foreach ($ids as $id) {
             $item = MaterialTransferRequest::find($id);
             if ($item) {
-                $item->update(['collection_status' => 'completed']);
+                $item->update([
+                    'collection_status' => 'completed',
+                    'transfer_voucher_number' => $validated['voucher_number']
+                ]);
             }
         }
         return back()->with('success', 'All items marked as completed!');
