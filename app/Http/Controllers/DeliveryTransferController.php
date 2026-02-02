@@ -13,7 +13,7 @@ class DeliveryTransferController extends Controller
         
         $transfer->update([
             'rt' => true,
-            'collection_status' => 'completed'
+            'collection_status' => 'received'
         ]);
         
         event(new \App\Events\MaterialTransferReceived($transfer));

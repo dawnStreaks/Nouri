@@ -204,6 +204,17 @@
                                         </button>
                                     </form>
                                 @endif
+                                @if(auth()->user()->role === 'delivery' && $group->every(fn($i) => $i->collection_status === 'ready_for_collection'))
+                                    <form method="POST" action="{{ route('material-transfer.collect-delivery-group') }}" class="inline" onclick="event.stopPropagation();">
+                                        @csrf
+                                        @foreach($group as $item)
+                                            <input type="hidden" name="ids[]" value="{{ $item->id }}">
+                                        @endforeach
+                                        <button type="submit" class="inline-flex items-center px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs transition">
+                                            <i class="fas fa-box mr-1"></i>Collect All
+                                        </button>
+                                    </form>
+                                @endif
                                 @if(auth()->user()->role === 'delivery' && $group->every(fn($i) => $i->collection_status === 'collected' && !$i->rt))
                                     <form method="POST" action="{{ route('material-transfer.received-group') }}" class="inline" onclick="event.stopPropagation();">
                                         @csrf
@@ -215,7 +226,7 @@
                                         </button>
                                     </form>
                                 @endif
-                                @if(auth()->user()->role === 'admin' && $group->every(fn($i) => $i->collection_status === 'collected' && $i->rt))
+                                @if(auth()->user()->role === 'admin' && $group->every(fn($i) => $i->collection_status === 'received'))
                                     <button onclick="event.stopPropagation(); showVoucherDialog({{ $loop->index }})" class="inline-flex items-center px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs transition">
                                         <i class="fas fa-check-double mr-1"></i>Complete All
                                     </button>

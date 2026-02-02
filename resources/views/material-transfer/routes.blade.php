@@ -72,12 +72,20 @@
                                 <div class="text-xs text-gray-600">Approved</div>
                             </div>
                         </div>
-                        @if($userRole === 'delivery')
-                            <div class="text-center mb-4 {{ $stats['collected'] > 0 ? 'bg-orange-100 rounded p-2' : '' }}">
-                                <div class="text-2xl font-bold text-orange-600">{{ $stats['collected'] }}</div>
-                                <div class="text-xs text-gray-600">Ready for Delivery</div>
+                        <div class="grid grid-cols-3 gap-4 mb-4">
+                            <div class="text-center {{ $userRole === 'delivery' && $stats['readyForCollection'] > 0 ? 'bg-indigo-100 rounded p-1' : '' }}">
+                                <div class="text-2xl font-bold text-indigo-600">{{ $stats['readyForCollection'] }}</div>
+                                <div class="text-xs text-gray-600">To Collect</div>
                             </div>
-                        @endif
+                            <div class="text-center {{ $userRole === 'delivery' && $stats['collected'] > 0 ? 'bg-orange-100 rounded p-1' : '' }}">
+                                <div class="text-2xl font-bold text-orange-600">{{ $stats['collected'] }}</div>
+                                <div class="text-xs text-gray-600">Collected</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-purple-600">{{ $stats['completed'] }}</div>
+                                <div class="text-xs text-gray-600">Completed</div>
+                            </div>
+                        </div>
                         <div class="flex gap-2">
                             <a href="{{ route('material-transfer.show', $routeKey) }}" 
                                class="flex-1 bg-{{ $color }}-500 hover:bg-{{ $color }}-600 text-white text-center py-2 px-4 rounded transition duration-200">

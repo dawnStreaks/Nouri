@@ -23,7 +23,9 @@ class MaterialTransferController extends Controller
             $total = MaterialTransferRequest::where('transfer_route', $routeKey)->count();
             $pending = MaterialTransferRequest::where('transfer_route', $routeKey)->where('is_approved', false)->count();
             $approved = MaterialTransferRequest::where('transfer_route', $routeKey)->where('is_approved', true)->count();
+            $readyForCollection = MaterialTransferRequest::where('transfer_route', $routeKey)->where('collection_status', 'ready_for_collection')->count();
             $collected = MaterialTransferRequest::where('transfer_route', $routeKey)->where('collection_status', 'collected')->count();
+            $completed = MaterialTransferRequest::where('transfer_route', $routeKey)->where('collection_status', 'completed')->count();
             $awaitingCollection = MaterialTransferRequest::where('transfer_route', $routeKey)
                 ->where('is_approved', true)
                 ->whereNotNull('actual_qty_received')
@@ -43,7 +45,9 @@ class MaterialTransferController extends Controller
                 'total' => $total,
                 'pending' => $pending,
                 'approved' => $approved,
+                'readyForCollection' => $readyForCollection,
                 'collected' => $collected,
+                'completed' => $completed,
                 'awaitingCollection' => $awaitingCollection,
                 'awaitingCompletion' => $awaitingCompletion,
                 'needsActualQty' => $needsActualQty
@@ -369,7 +373,7 @@ class MaterialTransferController extends Controller
             $item = MaterialTransferRequest::find($id);
             if ($item) {
                 $item->update([
-                    'collection_status' => 'collected',
+                    'collection_status' => 'received',
                     'rt' => true,
                     'received_by' => auth()->user()->name,
                     'received_at' => now()
@@ -411,16 +415,11 @@ class MaterialTransferController extends Controller
     {
         $item = MaterialTransferRequest::findOrFail($id);
         $item->update([
-            'collection_status' => 'completed',
+            'collection_status' => 'received',
             'rt' => true
         ]);
 
-        // Send email to admins
-        $admins = \App\Models\User::where('role', 'admin')->get();
-        foreach ($admins as $admin) {
-            \Mail::to($admin->email)->send(new \App\Mail\TransferApprovedMail($item));
-        }
-
+        event(new \App\Events\MaterialTransferReceived($item));
         return back()->with('success', 'Item marked as received successfully!');
     }
 
