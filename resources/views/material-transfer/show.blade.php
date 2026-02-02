@@ -660,7 +660,7 @@
             
             cells.forEach(cell => {
                 const field = cell.getAttribute('data-field');
-                const value = cell.textContent.trim();
+                let value = cell.textContent.trim();
                 
                 // ST and RT are always read-only (controlled by buttons)
                 if (field === 'st' || field === 'rt') {
@@ -675,6 +675,8 @@
                 }
                 
                 if (field === 'unit') {
+                    const unitSpan = cell.querySelector('span');
+                    value = unitSpan ? unitSpan.textContent.trim() : value;
                     cell.innerHTML = `<select class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="Nos" ${value === 'Nos' ? 'selected' : ''}>Nos</option>
                         <option value="Pcs" ${value === 'Pcs' ? 'selected' : ''}>Pcs</option>
