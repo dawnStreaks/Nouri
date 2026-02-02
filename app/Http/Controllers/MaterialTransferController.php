@@ -262,7 +262,7 @@ class MaterialTransferController extends Controller
         $item = MaterialTransferRequest::findOrFail($id);
         $item->update([
             'st' => true,
-            'collection_status' => 'collected',
+            'collection_status' => 'ready_for_collection',
             'collected_by' => auth()->user()->name,
             'collected_at' => now()
         ]);
@@ -292,6 +292,8 @@ class MaterialTransferController extends Controller
     public function approveGroup(Request $request)
     {
         $ids = $request->input('ids', []);
+        $approvedItems = [];
+        
         foreach ($ids as $id) {
             $item = MaterialTransferRequest::find($id);
             if ($item && !$item->is_approved) {
@@ -300,6 +302,20 @@ class MaterialTransferController extends Controller
                     'approved_by' => auth()->user()->name,
                     'approved_at' => now()
                 ]);
+                $approvedItems[] = $item;
+            }
+        }
+
+        if (count($approvedItems) > 0) {
+            $storeUsers = \App\Models\User::where('role', 'store')->get();
+            $admins = \App\Models\User::where('role', 'admin')->pluck('email')->toArray();
+            
+            foreach ($storeUsers as $user) {
+                foreach ($approvedItems as $item) {
+                    \Mail::to($user->email)
+                        ->cc($admins)
+                        ->send(new \App\Mail\TransferApprovedMail($item));
+                }
             }
         }
 
@@ -311,10 +327,10 @@ class MaterialTransferController extends Controller
         $ids = $request->input('ids', []);
         foreach ($ids as $id) {
             $item = MaterialTransferRequest::find($id);
-            if ($item && $item->collection_status !== 'collected') {
+            if ($item && $item->collection_status !== 'collected' && $item->collection_status !== 'ready_for_collection') {
                 $item->update([
                     'st' => true,
-                    'collection_status' => 'collected',
+                    'collection_status' => 'ready_for_collection',
                     'collected_by' => auth()->user()->name,
                     'collected_at' => now()
                 ]);
