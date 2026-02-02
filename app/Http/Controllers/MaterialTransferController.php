@@ -383,6 +383,30 @@ class MaterialTransferController extends Controller
     }
 
 
+    public function collectDelivery(Request $request, $id)
+    {
+        $item = MaterialTransferRequest::findOrFail($id);
+        $item->update([
+            'collection_status' => 'collected'
+        ]);
+
+        return back()->with('success', 'Item collected successfully!');
+    }
+
+    public function collectDeliveryGroup(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        foreach ($ids as $id) {
+            $item = MaterialTransferRequest::find($id);
+            if ($item && $item->collection_status === 'ready_for_collection') {
+                $item->update([
+                    'collection_status' => 'collected'
+                ]);
+            }
+        }
+        return back()->with('success', 'All items collected successfully!');
+    }
+
     public function received(Request $request, $id)
     {
         $item = MaterialTransferRequest::findOrFail($id);

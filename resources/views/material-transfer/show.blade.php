@@ -193,6 +193,17 @@
                                         </button>
                                     </form>
                                 @endif
+                                @if(auth()->user()->role === 'delivery' && $group->every(fn($i) => $i->collection_status === 'ready_for_collection'))
+                                    <form method="POST" action="{{ route('material-transfer.collect-delivery-group') }}" class="inline" onclick="event.stopPropagation();">
+                                        @csrf
+                                        @foreach($group as $item)
+                                            <input type="hidden" name="ids[]" value="{{ $item->id }}">
+                                        @endforeach
+                                        <button type="submit" class="inline-flex items-center px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded-md text-xs transition">
+                                            <i class="fas fa-truck mr-1"></i>Collect All
+                                        </button>
+                                    </form>
+                                @endif
                                 @if(auth()->user()->role === 'delivery' && $group->every(fn($i) => $i->collection_status === 'collected' && !$i->rt))
                                     <form method="POST" action="{{ route('material-transfer.received-group') }}" class="inline" onclick="event.stopPropagation();">
                                         @csrf
@@ -312,7 +323,14 @@
                                                             </button>
                                                         </form>
                                                     @elseif(auth()->user()->role === 'delivery')
-                                                        @if($request->collection_status === 'collected' && !$request->rt)
+                                                        @if($request->collection_status === 'ready_for_collection')
+                                                            <form method="POST" action="{{ route('material-transfer.collect-delivery', $request->id) }}" class="inline">
+                                                                @csrf
+                                                                <button type="submit" class="inline-flex items-center px-3 py-2 bg-orange-600 text-white rounded-md text-sm hover:bg-orange-700 transition">
+                                                                    <i class="fas fa-truck mr-1"></i>Collect
+                                                                </button>
+                                                            </form>
+                                                        @elseif($request->collection_status === 'collected' && !$request->rt)
                                                             <form method="POST" action="{{ route('material-transfer.received', $request->id) }}" class="inline">
                                                                 @csrf
                                                                 <button type="submit" class="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition">

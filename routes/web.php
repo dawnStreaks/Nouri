@@ -40,6 +40,8 @@ Route::middleware('auth')->group(function () {
     });
     Route::post('/collect-group', [MaterialTransferController::class, 'collectGroup'])->name('material-transfer.collect-group');
     Route::post('/collect-group', [MaterialTransferController::class, 'collectGroup'])->name('material-transfer.collect-group');
+    Route::post('/collect-delivery/{id}', [MaterialTransferController::class, 'collectDelivery'])->name('material-transfer.collect-delivery');
+    Route::post('/collect-delivery-group', [MaterialTransferController::class, 'collectDeliveryGroup'])->name('material-transfer.collect-delivery-group');
     Route::post('/finish/{id}', [MaterialTransferController::class, 'finish'])->name('material-transfer.finish');
     Route::post('/finish-group', [MaterialTransferController::class, 'finishGroup'])->name('material-transfer.finish-group');
     Route::post('/received/{id}', [MaterialTransferController::class, 'received'])->name('material-transfer.received');
