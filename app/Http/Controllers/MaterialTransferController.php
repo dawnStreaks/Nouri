@@ -267,7 +267,15 @@ class MaterialTransferController extends Controller
             'collected_at' => now()
         ]);
 
-        event(new \App\Events\MaterialTransferCollected($item));
+        $deliveryUsers = \App\Models\User::where('role', 'delivery')->get();
+        $admins = \App\Models\User::where('role', 'admin')->pluck('email')->toArray();
+        
+        foreach ($deliveryUsers as $user) {
+            \Mail::to($user->email)
+                ->cc($admins)
+                ->send(new \App\Mail\TransferReadyForCollectionMail($item, auth()->user()->name));
+        }
+
         return back()->with('success', 'Item marked as ready for collection!');
     }
 
@@ -325,6 +333,8 @@ class MaterialTransferController extends Controller
     public function collectGroup(Request $request)
     {
         $ids = $request->input('ids', []);
+        $readyItems = [];
+        
         foreach ($ids as $id) {
             $item = MaterialTransferRequest::find($id);
             if ($item && $item->collection_status !== 'collected' && $item->collection_status !== 'ready_for_collection') {
@@ -334,11 +344,21 @@ class MaterialTransferController extends Controller
                     'collected_by' => auth()->user()->name,
                     'collected_at' => now()
                 ]);
+                $readyItems[] = $item;
             }
         }
-        if (count($ids) > 0) {
-            event(new \App\Events\MaterialTransferCollected(MaterialTransferRequest::find($ids[0])));
+        
+        if (count($readyItems) > 0) {
+            $deliveryUsers = \App\Models\User::where('role', 'delivery')->get();
+            $admins = \App\Models\User::where('role', 'admin')->pluck('email')->toArray();
+            
+            foreach ($deliveryUsers as $user) {
+                \Mail::to($user->email)
+                    ->cc($admins)
+                    ->send(new \App\Mail\TransferReadyForCollectionMail($readyItems, auth()->user()->name));
+            }
         }
+        
         return back()->with('success', 'All items marked as ready for collection!');
     }
 
