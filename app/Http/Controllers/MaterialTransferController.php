@@ -162,7 +162,15 @@ class MaterialTransferController extends Controller
 
     private function generateRefNo($route)
     {
-        $prefix = strtoupper(str_replace('-', '', substr($route, 0, 6)));
+        $parts = explode('-', $route);
+        $prefix = '';
+        foreach ($parts as $part) {
+            if ($part === 'to') continue;
+            if ($prefix !== '') {
+                $prefix .= '-';
+            }
+            $prefix .= strtoupper(substr($part, 0, 3));
+        }
         $date = date('Ymd');
         $lastRef = MaterialTransferRequest::where('transfer_route', $route)
             ->whereDate('created_at', today())
@@ -176,7 +184,7 @@ class MaterialTransferController extends Controller
             $sequence = 1;
         }
         
-        return $prefix . $date . str_pad($sequence, 3, '0', STR_PAD_LEFT);
+        return $prefix . '-' . $date . '-' . str_pad($sequence, 3, '0', STR_PAD_LEFT);
     }
 
     public function getNextSlNo($route)
@@ -319,15 +327,10 @@ class MaterialTransferController extends Controller
         }
 
         if (count($approvedItems) > 0) {
-            $storeUsers = \App\Models\User::where('role', 'store')->get();
-            $admins = \App\Models\User::where('role', 'admin')->pluck('email')->toArray();
+            $targetUsers = \App\Models\User::whereIn('role', ['admin', 'store'])->get();
             
-            foreach ($storeUsers as $user) {
-                foreach ($approvedItems as $item) {
-                    \Mail::to($user->email)
-                        ->cc($admins)
-                        ->send(new \App\Mail\TransferApprovedMail($item));
-                }
+            foreach ($targetUsers as $user) {
+                $this->sendGroupEmail($user->email, $approvedItems, 'APPROVED');
             }
         }
 
@@ -353,13 +356,10 @@ class MaterialTransferController extends Controller
         }
         
         if (count($readyItems) > 0) {
-            $deliveryUsers = \App\Models\User::where('role', 'delivery')->get();
-            $admins = \App\Models\User::where('role', 'admin')->pluck('email')->toArray();
+            $targetUsers = \App\Models\User::whereIn('role', ['admin', 'delivery'])->get();
             
-            foreach ($deliveryUsers as $user) {
-                \Mail::to($user->email)
-                    ->cc($admins)
-                    ->send(new \App\Mail\TransferReadyForCollectionMail($readyItems, auth()->user()->name));
+            foreach ($targetUsers as $user) {
+                $this->sendGroupEmail($user->email, $readyItems, 'READY FOR COLLECTION');
             }
         }
         
@@ -369,6 +369,8 @@ class MaterialTransferController extends Controller
     public function receivedGroup(Request $request)
     {
         $ids = $request->input('ids', []);
+        $receivedItems = [];
+        
         foreach ($ids as $id) {
             $item = MaterialTransferRequest::find($id);
             if ($item) {
@@ -378,11 +380,18 @@ class MaterialTransferController extends Controller
                     'received_by' => auth()->user()->name,
                     'received_at' => now()
                 ]);
+                $receivedItems[] = $item;
             }
         }
-        if (count($ids) > 0) {
-            event(new \App\Events\MaterialTransferReceived(MaterialTransferRequest::find($ids[0])));
+        
+        if (count($receivedItems) > 0) {
+            $targetUsers = \App\Models\User::where('role', 'admin')->get();
+            
+            foreach ($targetUsers as $user) {
+                $this->sendGroupEmail($user->email, $receivedItems, 'RECEIVED');
+            }
         }
+        
         return back()->with('success', 'All items marked as received successfully!');
     }
 
@@ -441,5 +450,43 @@ class MaterialTransferController extends Controller
             }
         }
         return back()->with('success', 'All items marked as completed!');
+    }
+
+    private function sendGroupEmail($email, $items, $status)
+    {
+        $header = $items[0];
+        $message = "Material Transfer Update\n\n";
+        $message .= "Status: {$status}\n";
+        $message .= "Date: " . now()->format('Y-m-d H:i:s') . "\n\n";
+        $message .= "Transfer Details:\n";
+        $message .= "================\n";
+        $message .= "Transfer Route: " . ucwords(str_replace('-', ' ', $header->transfer_route)) . "\n";
+        $message .= "Reference No: " . ($header->ref_no ?? '-') . "\n";
+        $message .= "Voucher No: " . ($header->transfer_voucher_number ?? '-') . "\n";
+        $message .= "Transfer Date: " . ($header->transfer_date ? $header->transfer_date->format('Y-m-d') : '-') . "\n";
+        $message .= "Company: " . ($header->company_name ?? '-') . "\n\n";
+        $message .= "Items:\n";
+        $message .= "================\n";
+        
+        foreach ($items as $item) {
+            $message .= "\nSL No: {$item->sl_no}\n";
+            $message .= "Part No: {$item->part_no}\n";
+            $message .= "Showroom Requirement: " . number_format($item->showroom_requirement, 2) . "\n";
+            $message .= "Unit: {$item->unit}\n";
+            $message .= "Allocatable Qty: " . number_format($item->allocatable_qty, 2) . "\n";
+            $message .= "Actual Qty Received: " . ($item->actual_qty_received ? number_format($item->actual_qty_received, 2) : '-') . "\n";
+            $message .= "ST: " . ($item->st ? 'Yes' : 'No') . "\n";
+            $message .= "RT: " . ($item->rt ? 'Yes' : 'No') . "\n";
+            $message .= "Approval Status: " . ($item->is_approved ? 'Approved' : 'Pending') . "\n";
+            $message .= "----------------\n";
+        }
+        
+        $message .= "\nTotal Items: " . count($items) . "\n";
+        $message .= "\nPlease check the system for more details.";
+        
+        \Mail::raw($message, function ($mail) use ($email, $status) {
+            $mail->to($email)
+                 ->subject("Material Transfer Group {$status}");
+        });
     }
 }
