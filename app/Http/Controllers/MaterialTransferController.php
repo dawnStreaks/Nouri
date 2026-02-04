@@ -7,6 +7,17 @@ use Illuminate\Http\Request;
 
 class MaterialTransferController extends Controller
 {
+    public function getPartNumbers(Request $request)
+    {
+        $search = $request->get('q', '');
+        $partNumbers = MaterialTransferRequest::where('part_no', 'like', '%' . $search . '%')
+            ->select('part_no')
+            ->distinct()
+            ->limit(10)
+            ->pluck('part_no');
+        return response()->json($partNumbers);
+    }
+
     public function index()
     {
         $routes = [
@@ -63,10 +74,21 @@ class MaterialTransferController extends Controller
         return view('material-transfer.create', compact('route', 'nextSlNo'));
     }
 
-    public function show($route)
+    public function show(Request $request, $route)
     {
-        $requests = MaterialTransferRequest::where('transfer_route', $route)
-            ->orderBy('created_at', 'desc')
+        $query = MaterialTransferRequest::where('transfer_route', $route);
+        
+        if ($search = $request->input('search')) {
+            $query->where(function($q) use ($search) {
+                $q->where('part_no', 'like', "%{$search}%")
+                  ->orWhere('ref_no', 'like', "%{$search}%")
+                  ->orWhere('transfer_voucher_number', 'like', "%{$search}%")
+                  ->orWhere('company_name', 'like', "%{$search}%")
+                  ->orWhere('sl_no', 'like', "%{$search}%");
+            });
+        }
+        
+        $requests = $query->orderBy('created_at', 'desc')
             ->orderBy('sl_no', 'desc')
             ->get();
         $groupedRequests = $requests->groupBy(function ($request) {
@@ -106,7 +128,8 @@ class MaterialTransferController extends Controller
             'totalQty',
             'readyForCollection',
             'collected',
-            'completed'
+            'completed',
+            'search'
         ));
     }
 
@@ -191,6 +214,17 @@ class MaterialTransferController extends Controller
     {
         $maxSlNo = MaterialTransferRequest::where('transfer_route', $route)->max('sl_no') ?? 0;
         return $maxSlNo + 1;
+    }
+
+    public function searchPartNumbers(Request $request)
+    {
+        $search = $request->get('q', '');
+        $partNumbers = MaterialTransferRequest::select('part_no')
+            ->where('part_no', 'like', "%{$search}%")
+            ->distinct()
+            ->limit(10)
+            ->pluck('part_no');
+        return response()->json($partNumbers);
     }
 
     public function edit($id)
@@ -455,38 +489,66 @@ class MaterialTransferController extends Controller
     private function sendGroupEmail($email, $items, $status)
     {
         $header = $items[0];
-        $message = "Material Transfer Update\n\n";
-        $message .= "Status: {$status}\n";
-        $message .= "Date: " . now()->format('Y-m-d H:i:s') . "\n\n";
-        $message .= "Transfer Details:\n";
-        $message .= "================\n";
-        $message .= "Transfer Route: " . ucwords(str_replace('-', ' ', $header->transfer_route)) . "\n";
-        $message .= "Reference No: " . ($header->ref_no ?? '-') . "\n";
-        $message .= "Voucher No: " . ($header->transfer_voucher_number ?? '-') . "\n";
-        $message .= "Transfer Date: " . ($header->transfer_date ? $header->transfer_date->format('Y-m-d') : '-') . "\n";
-        $message .= "Company: " . ($header->company_name ?? '-') . "\n\n";
-        $message .= "Items:\n";
-        $message .= "================\n";
+        
+        $html = "<html><head><style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+            .info { margin-bottom: 20px; }
+            .info-table { width: 100%; margin-bottom: 20px; }
+            .info-table td { padding: 5px; }
+            .items-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            .items-table th, .items-table td { border: 1px solid #333; padding: 8px; text-align: left; font-size: 12px; }
+            .items-table th { background-color: #f5f5f5; font-weight: bold; }
+            .footer { margin-top: 40px; text-align: right; font-size: 12px; color: #666; }
+        </style></head><body>";
+        
+        $html .= "<div class='header'>";
+        $html .= "<h1>Material Transfer Request</h1>";
+        $html .= "<h3>" . ucwords(str_replace('-', ' ', $header->transfer_route)) . " Transfer</h3>";
+        $html .= "<h3>Status: {$status}</h3>";
+        $html .= "</div>";
+        
+        $html .= "<div class='info'>";
+        $html .= "<table class='info-table'>";
+        $html .= "<tr><td><strong>Reference No:</strong></td><td>" . ($header->ref_no ?? '-') . "</td>";
+        $html .= "<td><strong>Date:</strong></td><td>" . ($header->transfer_date ? $header->transfer_date->format('Y-m-d') : '-') . "</td></tr>";
+        $html .= "<tr><td><strong>Voucher No:</strong></td><td>" . ($header->transfer_voucher_number ?? '-') . "</td>";
+        $html .= "<td><strong>Company:</strong></td><td>" . ($header->company_name ?? '-') . "</td></tr>";
+        $html .= "</table>";
+        $html .= "</div>";
+        
+        $html .= "<table class='items-table'>";
+        $html .= "<thead><tr>";
+        $html .= "<th>SL No.</th><th>Part No.</th><th>Req. Qty</th><th>Unit</th><th>Alloc. Qty</th><th>Actual Qty</th><th>ST</th><th>RT</th><th>Status</th>";
+        $html .= "</tr></thead><tbody>";
         
         foreach ($items as $item) {
-            $message .= "\nSL No: {$item->sl_no}\n";
-            $message .= "Part No: {$item->part_no}\n";
-            $message .= "Showroom Requirement: " . number_format($item->showroom_requirement, 2) . "\n";
-            $message .= "Unit: {$item->unit}\n";
-            $message .= "Allocatable Qty: " . number_format($item->allocatable_qty, 2) . "\n";
-            $message .= "Actual Qty Received: " . ($item->actual_qty_received ? number_format($item->actual_qty_received, 2) : '-') . "\n";
-            $message .= "ST: " . ($item->st ? 'Yes' : 'No') . "\n";
-            $message .= "RT: " . ($item->rt ? 'Yes' : 'No') . "\n";
-            $message .= "Approval Status: " . ($item->is_approved ? 'Approved' : 'Pending') . "\n";
-            $message .= "----------------\n";
+            $html .= "<tr>";
+            $html .= "<td>{$item->sl_no}</td>";
+            $html .= "<td>{$item->part_no}</td>";
+            $html .= "<td>" . number_format($item->showroom_requirement, 2) . "</td>";
+            $html .= "<td>{$item->unit}</td>";
+            $html .= "<td>" . number_format($item->allocatable_qty, 2) . "</td>";
+            $html .= "<td>" . ($item->actual_qty_received ? number_format($item->actual_qty_received, 2) : '-') . "</td>";
+            $html .= "<td>" . ($item->st ? 'Yes' : 'No') . "</td>";
+            $html .= "<td>" . ($item->rt ? 'Yes' : 'No') . "</td>";
+            $html .= "<td>" . ($item->is_approved ? 'Approved' : 'Pending') . "</td>";
+            $html .= "</tr>";
         }
         
-        $message .= "\nTotal Items: " . count($items) . "\n";
-        $message .= "\nPlease check the system for more details.";
+        $html .= "</tbody></table>";
         
-        \Mail::raw($message, function ($mail) use ($email, $status) {
+        $html .= "<div class='footer'>";
+        $html .= "<p>Total Items: " . count($items) . "</p>";
+        $html .= "<p>Generated on: " . now()->format('Y-m-d H:i:s') . "</p>";
+        $html .= "</div>";
+        
+        $html .= "</body></html>";
+        
+        \Mail::send([], [], function ($mail) use ($email, $status, $html) {
             $mail->to($email)
-                 ->subject("Material Transfer Group {$status}");
+                 ->subject("Material Transfer Group {$status}")
+                 ->html($html);
         });
     }
 }

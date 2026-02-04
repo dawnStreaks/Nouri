@@ -5,6 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Material Transfer Request</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .autocomplete-items {
+            position: absolute;
+            border: 1px solid #d4d4d4;
+            border-top: none;
+            z-index: 99;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .autocomplete-items div {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .autocomplete-items div:hover {
+            background-color: #f3f4f6;
+        }
+    </style>
 </head>
 <body class="bg-gray-100 p-6">
     <div class="w-4/5 mx-auto">
@@ -76,7 +99,10 @@
                         <tbody id="tableBody" class="bg-white divide-y divide-gray-200">
                             <tr>
                                 <td class="px-4 py-3"><input type="number" name="items[0][sl_no]" value="{{ $nextSlNo }}" class="w-full border rounded px-2 py-1" readonly required></td>
-                                <td class="px-4 py-3"><input type="text" name="items[0][part_no]" class="w-full border rounded px-2 py-1" required></td>
+                                <td class="px-4 py-3 relative">
+                                    <input type="text" name="items[0][part_no]" class="w-full border rounded px-2 py-1 part-no-input" required autocomplete="off">
+                                    <div class="autocomplete-items hidden"></div>
+                                </td>
                                 <td class="px-4 py-3"><input type="number" step="0.01" name="items[0][showroom_requirement]" class="w-full border rounded px-2 py-1" required></td>
                                 <td class="px-4 py-3">
                                     <select name="items[0][unit]" class="w-full border rounded px-2 py-1" required>
@@ -116,12 +142,90 @@
             return nextSlNo + rowIndex;
         }
 
+        function setupAutocomplete(input) {
+            let currentFocus = -1;
+            const container = input.parentElement.querySelector('.autocomplete-items');
+            
+            input.addEventListener('input', function() {
+                const val = this.value;
+                container.innerHTML = '';
+                container.classList.add('hidden');
+                currentFocus = -1;
+                
+                if (!val || val.length < 1) return;
+                
+                fetch(`{{ route('api.part-numbers') }}?q=${encodeURIComponent(val)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length === 0) return;
+                        
+                        container.classList.remove('hidden');
+                        data.forEach(partNo => {
+                            const div = document.createElement('div');
+                            div.textContent = partNo;
+                            div.addEventListener('click', function() {
+                                input.value = partNo;
+                                container.innerHTML = '';
+                                container.classList.add('hidden');
+                            });
+                            container.appendChild(div);
+                        });
+                    });
+            });
+            
+            input.addEventListener('keydown', function(e) {
+                const items = container.querySelectorAll('div');
+                if (e.keyCode === 40) { // Down
+                    currentFocus++;
+                    addActive(items);
+                    e.preventDefault();
+                } else if (e.keyCode === 38) { // Up
+                    currentFocus--;
+                    addActive(items);
+                    e.preventDefault();
+                } else if (e.keyCode === 13) { // Enter
+                    e.preventDefault();
+                    if (currentFocus > -1 && items[currentFocus]) {
+                        items[currentFocus].click();
+                    }
+                }
+            });
+            
+            function addActive(items) {
+                if (!items || items.length === 0) return;
+                removeActive(items);
+                if (currentFocus >= items.length) currentFocus = 0;
+                if (currentFocus < 0) currentFocus = items.length - 1;
+                items[currentFocus].classList.add('bg-gray-200');
+            }
+            
+            function removeActive(items) {
+                items.forEach(item => item.classList.remove('bg-gray-200'));
+            }
+            
+            document.addEventListener('click', function(e) {
+                if (e.target !== input) {
+                    container.innerHTML = '';
+                    container.classList.add('hidden');
+                }
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.part-no-input').forEach(input => {
+                setupAutocomplete(input);
+            });
+        });
+
         function addRow() {
             const tbody = document.getElementById('tableBody');
             const newRow = document.createElement('tr');
             newRow.innerHTML = `
                 <td class="px-4 py-3"><input type="number" name="items[${rowIndex}][sl_no]" value="${getNextSlNo()}" class="w-full border rounded px-2 py-1" readonly required></td>
-                <td class="px-4 py-3"><input type="text" name="items[${rowIndex}][part_no]" class="w-full border rounded px-2 py-1" required></td>
+                <td class="px-4 py-3 relative">
+                    <input type="text" name="items[${rowIndex}][part_no]" class="w-full border rounded px-2 py-1 part-no-input" required autocomplete="off">
+                    <div class="autocomplete-items hidden"></div>
+                </td>
                 <td class="px-4 py-3"><input type="number" step="0.01" name="items[${rowIndex}][showroom_requirement]" class="w-full border rounded px-2 py-1" required></td>
                 <td class="px-4 py-3">
                     <select name="items[${rowIndex}][unit]" class="w-full border rounded px-2 py-1" required>
@@ -140,6 +244,8 @@
                 <td class="px-4 py-3"><button type="button" onclick="removeRow(this)" class="bg-red-500 text-white px-2 py-1 rounded text-xs">Delete</button></td>
             `;
             tbody.appendChild(newRow);
+            const newInput = newRow.querySelector('.part-no-input');
+            setupAutocomplete(newInput);
             rowIndex++;
         }
 

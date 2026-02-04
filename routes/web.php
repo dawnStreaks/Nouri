@@ -27,6 +27,8 @@ Route::middleware('auth')->group(function () {
     Route::put('/update/{id}', [MaterialTransferController::class, 'update'])->name('material-transfer.update');
     Route::post('/update/{id}', [MaterialTransferController::class, 'update']);
     Route::get('/next-sl/{route}', [MaterialTransferController::class, 'getNextSlNo'])->name('material-transfer.next-sl');
+    Route::get('/api/part-numbers', [MaterialTransferController::class, 'getPartNumbers'])->name('api.part-numbers');
+    Route::get('/search-part-numbers', [MaterialTransferController::class, 'searchPartNumbers'])->name('material-transfer.search-parts');
     Route::get('/material-transfer/store', function() {
         return redirect()->route('material-transfer.index');
     });

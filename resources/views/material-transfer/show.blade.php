@@ -59,6 +59,23 @@
                 </div>
             @endif
 
+            <!-- Search Bar -->
+            <div class="bg-white rounded-lg shadow p-4 mb-6">
+                <form method="GET" action="{{ route('material-transfer.show', $route) }}" class="flex gap-3">
+                    <div class="flex-1">
+                        <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Search by Part No, Ref No, Voucher No, Company, or SL No..." class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition">
+                        <i class="fas fa-search mr-2"></i>Search
+                    </button>
+                    @if(isset($search) && $search)
+                        <a href="{{ route('material-transfer.show', $route) }}" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium transition">
+                            <i class="fas fa-times mr-2"></i>Clear
+                        </a>
+                    @endif
+                </form>
+            </div>
+
             <!-- Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
                 <button onclick="filterByStatus('all')" class="bg-white rounded-lg shadow p-4 hover:shadow-lg transition cursor-pointer text-left">
@@ -182,7 +199,7 @@
                                         </button>
                                     </form>
                                 @endif
-                                @if(auth()->user()->role === 'store' && $groupApproved && $group->every(fn($i) => $i->actual_qty_received && $i->collection_status !== 'collected' && $i->collection_status !== 'completed' && $i->collection_status !== 'ready_for_collection'))
+                                @if(auth()->user()->role === 'store' && $groupApproved && $group->every(fn($i) => $i->actual_qty_received && !in_array($i->collection_status, ['collected', 'received', 'completed', 'ready_for_collection'])))
                                     <form method="POST" action="{{ route('material-transfer.collect-group') }}" class="inline" onclick="event.stopPropagation();">
                                         @csrf
                                         @foreach($group as $item)
@@ -313,6 +330,10 @@
                                                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-orange-100 text-orange-800 approval-status" data-status="collected">
                                                         <i class="fas fa-truck mr-1"></i>Collected
                                                     </span>
+                                                @elseif($request->collection_status === 'received')
+                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800 approval-status" data-status="received">
+                                                        <i class="fas fa-check-double mr-1"></i>Received
+                                                    </span>
                                                 @elseif($request->collection_status === 'ready_for_collection')
                                                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-indigo-100 text-indigo-800 approval-status" data-status="ready_for_collection">
                                                         <i class="fas fa-box mr-1"></i>To Collect
@@ -372,7 +393,7 @@
                                                             </button>
                                                         </form>
                                                     @endif
-                                                    @if(auth()->user()->role === 'store' && $request->actual_qty_received && $request->collection_status !== 'collected' && $request->collection_status !== 'completed' && $request->collection_status !== 'ready_for_collection')
+                                                    @if(auth()->user()->role === 'store' && $request->actual_qty_received && !in_array($request->collection_status, ['collected', 'received', 'completed', 'ready_for_collection']))
                                                         <form method="POST" action="{{ route('material-transfer.collect', $request->id) }}" class="inline">
                                                             @csrf
                                                             <input type="hidden" name="collected_by" value="{{ auth()->user()->name }}">
